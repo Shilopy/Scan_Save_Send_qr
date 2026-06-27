@@ -75,8 +75,9 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .section-header{display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px;flex-wrap:wrap;gap:4px}
 .section-header h2{font-size:14px;font-weight:700}
 .section-header .count-badge{background:var(--blue);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;min-width:24px;text-align:center}
-.section-header .target-badge{background:var(--card);border:1.5px solid var(--border);color:var(--sub);font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;display:flex;align-items:center;gap:4px}
-.section-header .target-badge input{width:36px;padding:1px 4px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;text-align:center;outline:none}
+.target-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;max-width:480px;margin:0 auto 4px;font-size:13px;color:var(--text)}
+.target-bar input{width:70px;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:14px;text-align:center;outline:none}
+.target-bar input:focus{border-color:var(--blue)}
 #codes-list{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto;padding-right:4px}
 #codes-list::-webkit-scrollbar{width:4px}
 #codes-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -191,13 +192,17 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   <button onclick="submitManual()">➕ Добавить</button>
 </div>
 
+<!-- Target count — всегда видно -->
+<div class="target-bar">
+  <span>🎯 Цель: </span>
+  <input type="number" id="targetCount2" min="0" max="9999" placeholder="0" onchange="saveTargetCount()" title="Целевое количество кодов">
+  <span class="count-badge" id="count-badge">0</span>
+</div>
+
 <div id="codes-section" class="hidden">
   <div class="section-header">
     <h2>📋 Отсканированные коды</h2>
-    <span class="target-badge">
-      🎯 <input type="number" id="targetCount" min="0" max="999" placeholder="0" onchange="saveTargetCount()" title="Целевое количество">
-    </span>
-    <span class="count-badge" id="count-badge">0</span>
+    <span class="count-badge" id="count-badge2">0</span>
   </div>
   <div id="codes-list"></div>
 </div>
@@ -249,6 +254,7 @@ const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('start-btn');
 const codesList = document.getElementById('codes-list');
 const countBadge = document.getElementById('count-badge');
+const countBadge2 = document.getElementById('count-badge2');
 const codesSection = document.getElementById('codes-section');
 const actionRow = document.getElementById('action-row');
 const optionsRow = document.getElementById('options-row');
@@ -364,16 +370,20 @@ function loadFromLocalStorage() {
 
 // ── Target count ──
 function saveTargetCount() {
-  var val = parseInt(document.getElementById('targetCount').value) || 0;
+  var el = document.getElementById('targetCount2');
+  var val = parseInt(el ? el.value : 0) || 0;
   localStorage.setItem('ssq-target', val);
   targetReachedShown = false;
 }
 function loadTargetCount() {
+  var el = document.getElementById('targetCount2');
+  if (!el) return;
   var val = parseInt(localStorage.getItem('ssq-target')) || 0;
-  document.getElementById('targetCount').value = val || '';
+  el.value = val || '';
 }
 function checkTargetReached() {
-  var target = parseInt(document.getElementById('targetCount').value) || 0;
+  var el = document.getElementById('targetCount2');
+  var target = parseInt(el ? el.value : 0) || 0;
   if (target > 0 && codes.length >= target) {
     showTargetReached(codes.length);
     return true;
@@ -448,16 +458,12 @@ function restoreHistory(idx) {
 
 // ── Render codes ──
 function renderCodes() {
-  if (codes.length === 0) {
-    codesSection.classList.add('hidden');
-    actionRow.style.display = 'none';
-    optionsRow.style.display = 'none';
-    return;
-  }
-  codesSection.classList.remove('hidden');
-  actionRow.style.display = 'flex';
-  optionsRow.style.display = 'flex';
+  var has = codes.length > 0;
+  codesSection.classList.toggle('hidden', !has);
+  actionRow.style.display = has ? 'flex' : 'none';
+  optionsRow.style.display = has ? 'flex' : 'none';
   countBadge.textContent = codes.length;
+  if (countBadge2) countBadge2.textContent = codes.length;
   codesList.innerHTML = codes.map(function(c, i) {
     var cc = c.cat === 'light' ? 'light' : 'build';
     var cl = c.cat === 'light' ? '👕' : '🏗️';
@@ -467,7 +473,8 @@ function renderCodes() {
 }
 
 function updateTargetProgress() {
-  var target = parseInt(document.getElementById('targetCount').value) || 0;
+  var el = document.getElementById('targetCount2');
+  var target = parseInt(el ? el.value : 0) || 0;
   if (target > 0) {
     var remaining = target - codes.length;
     if (remaining <= 0) {
