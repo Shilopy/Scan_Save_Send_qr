@@ -757,6 +757,15 @@ function stopCamera() {
   statusEl.className = '';
 }
 
+function getVideoTrack() {
+  try {
+    var video = document.querySelector('#reader video');
+    if (!video || !video.srcObject) return null;
+    var tracks = video.srcObject.getVideoTracks();
+    return tracks.length ? tracks[0] : null;
+  } catch(_) { return null; }
+}
+
 // ── Torch ──
 function toggleTorch() {
   var track = getVideoTrack();
