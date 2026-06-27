@@ -3,7 +3,7 @@
 //  Кэширует все статические ресурсы для офлайн-работы
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ssq-cache-v2';
+const CACHE_NAME = 'ssq-cache-v3';
 const BASE_PATH = '/Scan_Save_Send_qr';
 
 const PRECACHE_URLS = [
