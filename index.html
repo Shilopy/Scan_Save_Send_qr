@@ -566,8 +566,8 @@ function saveTxt() {
   var now = new Date();
   var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
   var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
-  var body = codes.map(function(c) { return c.text; }).join('\n');
+  var header = 'QR коды Честного знака\r\nКатегория: ' + catName + '\r\nДата: ' + ds + '\r\nВсего: ' + codes.length + '\r\n\r\n';
+  var body = codes.map(function(c) { return c.text; }).join('\r\n');
   var content = header + body;
   downloadFile(content, getFilename('txt'), 'text/plain;charset=utf-8');
   if (document.getElementById('autoClearCheck').checked) clearAll();
@@ -580,8 +580,8 @@ function saveCsv() {
   var now = new Date();
   var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
   var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
-  var body = codes.map(function(c) { return c.text; }).join('\n');
+  var header = 'QR коды Честного знака\r\nКатегория: ' + catName + '\r\nДата: ' + ds + '\r\nВсего: ' + codes.length + '\r\n\r\n';
+  var body = codes.map(function(c) { return c.text; }).join('\r\n');
   var content = header + body;
   downloadFile(content, getFilename('csv'), 'text/csv;charset=utf-8');
   if (document.getElementById('autoClearCheck').checked) clearAll();
