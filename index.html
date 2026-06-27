@@ -666,23 +666,10 @@ function startScanner() {
     scanActive = true;
     statusEl.textContent = '✅ Камера работает. Наведите на QR-код.';
     statusEl.className = 'ok';
-    // Check zoom
-    scanner.getCameraCapabilities().then(function(caps) {
-      if (caps && caps.zoomFeature && caps.zoomFeature.isSupported()) {
-        zoomSupported = true;
-        document.getElementById('zoom-bar').style.display = 'flex';
-        document.getElementById('cam-row').style.display = 'flex';
-        document.getElementById('zoom-presets').style.display = 'flex';
-        document.getElementById('zoom-unavail').style.display = 'none';
-        currentZoom = caps.zoomFeature.value || 1;
-        document.getElementById('zoom-slider').value = currentZoom;
-        document.getElementById('zoom-val').textContent = currentZoom.toFixed(1) + '×';
-      } else {
-        document.getElementById('zoom-unavail').style.display = 'block';
-      }
-    }).catch(function() {
-      document.getElementById('zoom-unavail').style.display = 'block';
-    });
+    // Check zoom via track
+    setTimeout(function() {
+      probeCapabilities();
+    }, 500);
   }).catch(function(err) {
     statusEl.textContent = 'Ошибка камеры: ' + err;
     statusEl.className = 'err';
@@ -691,6 +678,43 @@ function startScanner() {
     document.getElementById('scan-controls').classList.remove('show');
     startBtn.style.display = 'block';
   });
+}
+
+function probeCapabilities() {
+  var track = getVideoTrack();
+  document.getElementById('scan-controls').classList.add('show');
+  document.getElementById('cam-row').style.display = 'flex';
+  if (!track) {
+    document.getElementById('zoom-unavail').style.display = 'block';
+    return;
+  }
+  try {
+    var caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.zoom) {
+      zoomSupported = true;
+      var slider = document.getElementById('zoom-slider');
+      slider.min = caps.zoom.min || 1;
+      slider.max = Math.min(caps.zoom.max || 5, 8);
+      slider.step = caps.zoom.step || 0.1;
+      slider.value = currentZoom;
+      document.getElementById('zoom-bar').style.display = 'flex';
+      var presets = document.querySelectorAll('.zoom-preset');
+      var anyVisible = false;
+      presets.forEach(function(btn) {
+        var v = parseFloat(btn.textContent);
+        if (v <= (caps.zoom.max || 5)) { btn.style.display = ''; anyVisible = true; }
+        else btn.style.display = 'none';
+      });
+      if (anyVisible) document.getElementById('zoom-presets').style.display = 'flex';
+    } else {
+      document.getElementById('zoom-unavail').style.display = 'block';
+    }
+    if (!caps.torch) {
+      document.getElementById('torch-btn').style.display = 'none';
+    }
+  } catch(e) {
+    document.getElementById('zoom-unavail').style.display = 'block';
+  }
 }
 
 function onScanSuccess(decodedText) {
@@ -735,28 +759,30 @@ function stopCamera() {
 
 // ── Torch ──
 function toggleTorch() {
-  if (!scanner || !scanActive) return;
+  var track = getVideoTrack();
+  if (!track) return;
   torchOn = !torchOn;
-  scanner.getCameraCapabilities().then(function(caps) {
-    if (caps && caps.torchFeature && caps.torchFeature.isSupported()) {
-      caps.torchFeature.apply(torchOn);
-      document.getElementById('torch-btn').classList.toggle('on', torchOn);
-      document.getElementById('torch-btn').textContent = torchOn ? '🔦 Фонарик ON' : '🔦 Фонарик';
-    }
-  }).catch(function() {});
+  track.applyConstraints({ advanced: [{ torch: torchOn }] }).then(function() {
+    document.getElementById('torch-btn').classList.toggle('on', torchOn);
+    document.getElementById('torch-btn').textContent = torchOn ? '🔦 Фонарик ON' : '🔦 Фонарик';
+  }).catch(function() {
+    torchOn = false;
+  });
 }
 
 // ── Zoom ──
 function applyZoom(val) {
   currentZoom = parseFloat(val);
   document.getElementById('zoom-val').textContent = currentZoom.toFixed(1) + '×';
-  if (scanner && scanActive) {
-    scanner.getCameraCapabilities().then(function(caps) {
-      if (caps && caps.zoomFeature && caps.zoomFeature.isSupported()) {
-        caps.zoomFeature.apply(currentZoom);
-      }
-    }).catch(function() {});
-  }
+  var track = getVideoTrack();
+  if (!track) return;
+  try {
+    var caps = track.getCapabilities();
+    if (caps.zoom) {
+      var zVal = Math.min(Math.max(val, caps.zoom.min || 1), caps.zoom.max || 8);
+      track.applyConstraints({ advanced: [{ zoom: zVal }] }).catch(function(){});
+    }
+  } catch(_) {}
 }
 
 function setZoomPreset(val) {
