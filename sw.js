@@ -3,14 +3,16 @@
 //  Кэширует все статические ресурсы для офлайн-работы
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ssq-cache-v1';
+const CACHE_NAME = 'ssq-cache-v2';
+const BASE_PATH = '/Scan_Save_Send_qr';
 
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  BASE_PATH + '/',
+  BASE_PATH + '/index.html',
+  BASE_PATH + '/manifest.json',
+  BASE_PATH + '/icon-192.svg',
+  BASE_PATH + '/icon-512.svg',
+  BASE_PATH + '/guide.html',
   'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
 ];
 
@@ -21,6 +23,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(PRECACHE_URLS);
     }).then(() => {
       return self.skipWaiting();
+    }).catch((err) => {
+      console.log('SW precache error (non-critical):', err);
     })
   );
 });
@@ -66,7 +70,7 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => {
         // Если сеть недоступна — возвращаем заглушку
         if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+          return caches.match(BASE_PATH + '/index.html');
         }
         return new Response('Offline', { status: 503 });
       });

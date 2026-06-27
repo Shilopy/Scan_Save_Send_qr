@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="QR Сканер ЧЗ">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>QR Сканер ЧЗ</title>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js">
 </script>
@@ -36,6 +36,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 #reader{width:100%;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border);height:min(90vw,420px);max-height:420px;position:relative}
 #reader video{width:100%!important;height:100%!important;object-fit:cover!important;position:absolute!important;top:0!important;left:0!important}
 #reader>div:first-of-type{width:100%!important;height:100%!important;position:absolute!important;top:0!important;left:0!important}
+#reader .qrbox{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid var(--green);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none;z-index:10;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{border-color:var(--green)}50%{border-color:rgba(74,222,128,.4)}}
 #stop-btn{display:none;width:100%;padding:8px;border-radius:0 0 14px 14px;border:1px solid var(--border);border-top:none;background:var(--card);color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #stop-btn.show{display:block}
 #reader__dashboard_section_swaplink,#reader__status_span,#reader__header_message{display:none!important}
@@ -80,7 +82,6 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 #codes-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 .code-item{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 10px;animation:fadeIn .2s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-.code-item .code-num{font-size:10px;font-weight:700;color:var(--sub);min-width:22px;text-align:right}
 .code-item .code-text{font-size:12px;font-weight:600;font-family:monospace;letter-spacing:.5px;flex:1;word-break:break-all;line-height:1.3}
 .code-item .code-cat{font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600;white-space:nowrap}
 .code-item .code-cat.light{background:rgba(245,158,11,.15);color:var(--cat-light)}
@@ -102,6 +103,15 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.success{border-color:var(--green);color:var(--green)}
 #toast.error{border-color:var(--red);color:var(--red)}
+#toast.target-reached{border-color:var(--orange);color:var(--orange);font-size:18px;padding:16px 24px;background:var(--card);border-width:3px;z-index:1000}
+/* Target reached overlay */
+#target-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px}
+#target-overlay.show{display:flex}
+#target-overlay .big-icon{font-size:64px;animation:bounce 1s ease infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+#target-overlay .big-text{font-size:28px;font-weight:800;color:var(--orange);text-align:center;line-height:1.3}
+#target-overlay .sub-text{font-size:16px;color:var(--sub);text-align:center}
+#target-overlay button{margin-top:8px;padding:14px 32px;border-radius:14px;border:none;background:var(--blue);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:flex-end;justify-content:center}
 .modal-overlay.show{display:flex}
 .modal-sheet{background:var(--card);border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:70vh;overflow-y:auto;padding:16px 18px 24px;animation:slideUp .25s ease}
@@ -208,6 +218,14 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 
 <div id="toast"></div>
 
+<!-- Target reached overlay -->
+<div id="target-overlay">
+  <div class="big-icon">🎯</div>
+  <div class="big-text">Цель достигнута!</div>
+  <div class="sub-text" id="target-msg">Отсканировано 0 кодов</div>
+  <button onclick="closeTargetOverlay()">✅ Продолжить</button>
+</div>
+
 <div class="modal-overlay" id="history-modal">
   <div class="modal-sheet">
     <h3>📋 История сканирований</h3>
@@ -219,12 +237,13 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  Scan_Save_Send_qr v2.0 — PWA сканер QR/DataMatrix ЧЗ
+//  Scan_Save_Send_qr v2.1 — PWA сканер QR/DataMatrix ЧЗ
 // ═══════════════════════════════════════════════════════════════
 
 let scanner = null, scanActive = false, currentCategory = 'light', torchOn = false, zoomSupported = false, currentZoom = 1;
 let codes = [];
 let sessionId = Date.now();
+let targetReachedShown = false;
 
 const statusEl = document.getElementById('status');
 const startBtn = document.getElementById('start-btn');
@@ -236,20 +255,20 @@ const optionsRow = document.getElementById('options-row');
 
 function esc(str) {
   if (!str && str !== 0) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+  return String(str).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'&#x27;');
 }
 
 // ── Theme ──
 function toggleTheme() {
-  const isLight = document.documentElement.dataset.theme === 'light';
-  const t = isLight ? 'dark' : 'light';
+  var isLight = document.documentElement.dataset.theme === 'light';
+  var t = isLight ? 'dark' : 'light';
   document.documentElement.dataset.theme = t;
   localStorage.setItem('ssq-theme', t);
   document.getElementById('theme-icon').textContent = t === 'light' ? '🌙' : '☀️';
   document.getElementById('theme-label').textContent = t === 'light' ? 'Тёмная' : 'Светлая';
 }
 (function() {
-  const s = localStorage.getItem('ssq-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  var s = localStorage.getItem('ssq-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
   document.documentElement.dataset.theme = s;
   document.getElementById('theme-icon').textContent = s === 'light' ? '🌙' : '☀️';
   document.getElementById('theme-label').textContent = s === 'light' ? 'Тёмная' : 'Светлая';
@@ -263,14 +282,14 @@ function setCategory(cat) {
   localStorage.setItem('ssq-category', cat);
 }
 (function() {
-  const s = localStorage.getItem('ssq-category');
+  var s = localStorage.getItem('ssq-category');
   if (s) setCategory(s);
 })();
 
 // ── Toast ──
-let toastTimer = null;
+var toastTimer = null;
 function showToast(msg, type) {
-  const el = document.getElementById('toast');
+  var el = document.getElementById('toast');
   el.textContent = msg;
   el.className = 'show' + (type ? ' ' + type : '');
   clearTimeout(toastTimer);
@@ -278,13 +297,13 @@ function showToast(msg, type) {
 }
 
 // ── Sound ──
-let audioCtx = null;
+var audioCtx = null;
 function playBeep() {
   if (!document.getElementById('soundCheck').checked) return;
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.frequency.value = 1200;
@@ -296,40 +315,77 @@ function playBeep() {
   } catch(e) {}
 }
 
+// ── Siren sound for target reached ──
+function playSiren() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Siren: alternating high-low tones
+    var now = audioCtx.currentTime;
+    for (var i = 0; i < 6; i++) {
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.value = i % 2 === 0 ? 880 : 660;
+      gain.gain.setValueAtTime(0.2, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.12);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.12);
+    }
+    // Long vibration pattern
+    try { navigator.vibrate([200, 100, 200, 100, 400]); } catch(_) {}
+  } catch(e) {}
+}
+
+// ── Target reached overlay ──
+function showTargetReached(count) {
+  if (targetReachedShown) return;
+  targetReachedShown = true;
+  document.getElementById('target-msg').textContent = 'Отсканировано ' + count + ' кодов';
+  document.getElementById('target-overlay').classList.add('show');
+  playSiren();
+}
+
+function closeTargetOverlay() {
+  document.getElementById('target-overlay').classList.remove('show');
+}
+
 // ── LocalStorage ──
 function saveToLocalStorage() {
   try { localStorage.setItem('ssq-codes', JSON.stringify(codes)); } catch(e) {}
 }
 function loadFromLocalStorage() {
   try {
-    const s = localStorage.getItem('ssq-codes');
+    var s = localStorage.getItem('ssq-codes');
     if (s) { codes = JSON.parse(s); if (!Array.isArray(codes)) codes = []; }
   } catch(e) { codes = []; }
 }
 
 // ── Target count ──
 function saveTargetCount() {
-  const val = parseInt(document.getElementById('targetCount').value) || 0;
+  var val = parseInt(document.getElementById('targetCount').value) || 0;
   localStorage.setItem('ssq-target', val);
-  updateTargetProgress();
+  targetReachedShown = false;
 }
 function loadTargetCount() {
-  const val = parseInt(localStorage.getItem('ssq-target')) || 0;
+  var val = parseInt(localStorage.getItem('ssq-target')) || 0;
   document.getElementById('targetCount').value = val || '';
 }
-function updateTargetProgress() {
-  const target = parseInt(document.getElementById('targetCount').value) || 0;
+function checkTargetReached() {
+  var target = parseInt(document.getElementById('targetCount').value) || 0;
   if (target > 0 && codes.length >= target) {
-    showToast('🎯 Цель достигнута: ' + target + ' кодов!', 'success');
-    try { navigator.vibrate([100, 100, 100]); } catch(_) {}
+    showTargetReached(codes.length);
+    return true;
   }
+  return false;
 }
 
 // ── History ──
 function saveSessionToHistory() {
   if (codes.length === 0) return;
   try {
-    const h = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    var h = JSON.parse(localStorage.getItem('ssq-history') || '[]');
     h.push({ id: sessionId, date: new Date().toISOString(), category: currentCategory, count: codes.length, codes: codes.slice() });
     if (h.length > 50) h.splice(0, h.length - 50);
     localStorage.setItem('ssq-history', JSON.stringify(h));
@@ -343,14 +399,14 @@ function showHistory() {
 
 function renderHistory(list, filterText) {
   try {
-    const history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
-    let filtered = history.slice().reverse();
+    var history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    var filtered = history.slice().reverse();
     if (filterText) {
-      const q = filterText.toLowerCase();
+      var q = filterText.toLowerCase();
       filtered = filtered.filter(function(h) {
-        const d = new Date(h.date);
-        const ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-        const cl = h.category === 'light' ? 'лёгкая пром.' : 'строит. мат.';
+        var d = new Date(h.date);
+        var ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+        var cl = h.category === 'light' ? 'лёгкая пром.' : 'строит. мат.';
         return ds.toLowerCase().includes(q) || cl.includes(q) || String(h.count).includes(q);
       });
     }
@@ -358,11 +414,11 @@ function renderHistory(list, filterText) {
       list.innerHTML = '<div class="history-empty">' + (filterText ? 'Ничего не найдено' : 'История пуста') + '</div>';
     } else {
       list.innerHTML = filtered.map(function(h) {
-        const idx = history.length - 1 - history.indexOf(h);
-        const d = new Date(h.date);
-        const ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-        const cl = h.category === 'light' ? '👕 Лёгкая пром.' : '🏗️ Строит. мат.';
-        const cc = h.category === 'light' ? 'light' : 'build';
+        var idx = history.length - 1 - history.indexOf(h);
+        var d = new Date(h.date);
+        var ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+        var cl = h.category === 'light' ? '👕 Лёгкая пром.' : '🏗️ Строит. мат.';
+        var cc = h.category === 'light' ? 'light' : 'build';
         return '<div class="history-item"><div><div class="hi-date">' + esc(ds) + '</div><div><span class="hi-cat ' + cc + '">' + cl + '</span></div></div><div style="display:flex;align-items:center;gap:8px"><span class="hi-count">' + h.count + ' шт</span><button class="hi-restore" onclick="restoreHistory(' + idx + ')">↩ Восстановить</button></div></div>';
       }).join('');
     }
@@ -377,8 +433,8 @@ function closeHistory() { document.getElementById('history-modal').classList.rem
 
 function restoreHistory(idx) {
   try {
-    const history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
-    const session = history[idx];
+    var history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    var session = history[idx];
     if (!session) return;
     codes = session.codes.slice();
     currentCategory = session.category;
@@ -386,334 +442,329 @@ function restoreHistory(idx) {
     saveToLocalStorage();
     renderCodes();
     closeHistory();
-    showToast('✅ История восстановлена (' + codes.length + ' кодов)', 'success');
-  } catch(e) { showToast('Ошибка восстановления', 'error'); }
+    showToast('Сессия восстановлена: ' + codes.length + ' кодов', 'success');
+  } catch(e) {}
 }
 
-// ── Render ──
+// ── Render codes ──
 function renderCodes() {
-  const has = codes.length > 0;
-  codesSection.classList.toggle('hidden', !has);
-  actionRow.style.display = has ? 'flex' : 'none';
-  optionsRow.style.display = has ? 'flex' : 'none';
+  if (codes.length === 0) {
+    codesSection.classList.add('hidden');
+    actionRow.style.display = 'none';
+    optionsRow.style.display = 'none';
+    return;
+  }
+  codesSection.classList.remove('hidden');
+  actionRow.style.display = 'flex';
+  optionsRow.style.display = 'flex';
   countBadge.textContent = codes.length;
-  updateTargetProgress();
-  if (!has) { codesList.innerHTML = ''; return; }
   codesList.innerHTML = codes.map(function(c, i) {
-    const cc = c.category === 'light' ? 'light' : 'build';
-    const cl = c.category === 'light' ? '👕' : '🏗️';
-    return '<div class="code-item"><span class="code-num">#' + (i + 1) + '</span><span class="code-text">' + esc(c.text) + '</span><span class="code-cat ' + cc + '">' + cl + '</span><button class="code-del" onclick="removeCode(' + i + ')" title="Удалить">✕</button></div>';
+    var cc = c.cat === 'light' ? 'light' : 'build';
+    var cl = c.cat === 'light' ? '👕' : '🏗️';
+    return '<div class="code-item"><span class="code-text">' + esc(c.text) + '</span><span class="code-cat ' + cc + '">' + cl + '</span><button class="code-del" onclick="removeCode(' + i + ')">✕</button></div>';
   }).join('');
-  codesList.scrollTop = codesList.scrollHeight;
+  updateTargetProgress();
+}
+
+function updateTargetProgress() {
+  var target = parseInt(document.getElementById('targetCount').value) || 0;
+  if (target > 0) {
+    var remaining = target - codes.length;
+    if (remaining <= 0) {
+      countBadge.textContent = codes.length + ' / ' + target;
+      countBadge.style.background = 'var(--orange)';
+    } else {
+      countBadge.textContent = codes.length + ' / ' + target;
+      countBadge.style.background = 'var(--blue)';
+    }
+  } else {
+    countBadge.textContent = codes.length;
+    countBadge.style.background = 'var(--blue)';
+  }
 }
 
 // ── Add code ──
-function addCode(raw) {
-  var short = raw.substring(0, 31);
-  if (short.length < 1) return false;
-  if (codes.some(function(c) { return c.text === short; })) {
-    showToast('⚠️ Этот код уже отсканирован', 'error');
-    return false;
+function addCode(text, cat) {
+  if (!text || text.trim().length === 0) return false;
+  var short = text.trim().substring(0, 31);
+  // Duplicate check
+  for (var i = 0; i < codes.length; i++) {
+    if (codes[i].text === short) {
+      showToast('Повтор! Код уже в списке', 'error');
+      try { navigator.vibrate(200); } catch(_) {}
+      return false;
+    }
   }
-  codes.push({ text: short, category: currentCategory, timestamp: Date.now() });
-  try { navigator.vibrate(100); } catch(_) {}
-  playBeep();
+  codes.push({ text: short, cat: cat || currentCategory });
   saveToLocalStorage();
   renderCodes();
-  showToast('✅ Код добавлен (' + short.length + ' символов)', 'success');
+  // Vibrate
+  try { navigator.vibrate(100); } catch(_) {}
+  playBeep();
+  // Check target immediately
+  checkTargetReached();
+  showToast('Код добавлен (' + codes.length + ')', 'success');
   return true;
 }
 
-// ── Manual input ──
-function submitManual() {
-  var val = document.getElementById('manual-input').value.trim();
-  if (!val) { showToast('Введите код', 'error'); return; }
-  if (addCode(val)) document.getElementById('manual-input').value = '';
+function removeCode(idx) {
+  codes.splice(idx, 1);
+  saveToLocalStorage();
+  renderCodes();
 }
-document.getElementById('manual-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') submitManual();
-});
-
-// ── Remove / Clear ──
-function removeCode(idx) { codes.splice(idx, 1); saveToLocalStorage(); renderCodes(); }
 
 function clearAll() {
   if (codes.length === 0) return;
-  if (!confirm('Очистить все отсканированные коды?')) return;
+  if (!confirm('Очистить все коды (' + codes.length + ' шт)?')) return;
+  // Save to history before clearing
+  saveSessionToHistory();
   codes = [];
+  sessionId = Date.now();
+  targetReachedShown = false;
   saveToLocalStorage();
   renderCodes();
-  showToast('🗑 Список очищен', '');
+  showToast('Список очищен', 'success');
 }
 
-// ── Save .txt ──
+// ── Sort codes by first 16 chars ──
+function sortCodes() {
+  codes.sort(function(a, b) {
+    var a16 = a.text.substring(0, 16);
+    var b16 = b.text.substring(0, 16);
+    if (a16 < b16) return -1;
+    if (a16 > b16) return 1;
+    return 0;
+  });
+}
+
+// ── Get filename from first code ──
+function getFilename(ext) {
+  if (codes.length > 0) {
+    var name = codes[0].text.substring(0, 16).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (name.length > 0) return name + '.' + ext;
+  }
+  return 'codes.' + ext;
+}
+
+// ── Save TXT ──
 function saveTxt() {
   if (codes.length === 0) { showToast('Нет кодов для сохранения', 'error'); return; }
+  sortCodes();
   var now = new Date();
-  var ds = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '_' + String(now.getHours()).padStart(2,'0') + '-' + String(now.getMinutes()).padStart(2,'0');
-  var cl = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var h = 'QR коды Честного знака\nКатегория: ' + cl + '\nДата: ' + now.toLocaleString('ru-RU') + '\nВсего: ' + codes.length + '\n\n' + codes.map(function(c,i) { return String(i+1) + '. ' + c.text; }).join('\n');
-  var blob = new Blob([h], {type:'text/plain;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url; a.download = 'QR_codes_' + ds + '.txt';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('💾 Файл сохранён: QR_codes_' + ds + '.txt', 'success');
+  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+  var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
+  var body = codes.map(function(c) { return c.text; }).join('\n');
+  var content = header + body;
+  downloadFile(content, getFilename('txt'), 'text/plain;charset=utf-8');
   if (document.getElementById('autoClearCheck').checked) clearAll();
 }
 
-// ── Save .csv ──
+// ── Save CSV ──
 function saveCsv() {
   if (codes.length === 0) { showToast('Нет кодов для сохранения', 'error'); return; }
+  sortCodes();
   var now = new Date();
-  var ds = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '_' + String(now.getHours()).padStart(2,'0') + '-' + String(now.getMinutes()).padStart(2,'0');
-  var cl = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var csv = '№,Код (31 символ),Категория\n';
-  csv += codes.map(function(c,i) { return String(i+1) + ',' + c.text + ',' + cl; }).join('\n');
-  var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'});
+  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+  var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
+  var body = codes.map(function(c) { return c.text; }).join('\n');
+  var content = header + body;
+  downloadFile(content, getFilename('csv'), 'text/csv;charset=utf-8');
+  if (document.getElementById('autoClearCheck').checked) clearAll();
+}
+
+// ── Download helper ──
+function downloadFile(content, filename, mime) {
+  var blob = new Blob([content], { type: mime + ';charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
-  a.href = url; a.download = 'QR_codes_' + ds + '.csv';
-  document.body.appendChild(a); a.click();
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('📊 Файл CSV сохранён', 'success');
-  if (document.getElementById('autoClearCheck').checked) clearAll();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  showToast('Файл ' + filename + ' сохранён', 'success');
 }
 
 // ── Copy all ──
 function copyAll() {
   if (codes.length === 0) { showToast('Нет кодов для копирования', 'error'); return; }
-  var text = codes.map(function(c,i) { return String(i+1) + '. ' + c.text; }).join('\n');
-  try {
-    navigator.clipboard.writeText(text).then(function() {
-      showToast('📋 Скопировано ' + codes.length + ' кодов', 'success');
-      if (document.getElementById('autoClearCheck').checked) clearAll();
-    }).catch(function() { fallbackCopy(text); });
-  } catch(e) { fallbackCopy(text); }
+  sortCodes();
+  var text = codes.map(function(c) { return c.text; }).join('\n');
+  navigator.clipboard.writeText(text).then(function() {
+    showToast('Скопировано ' + codes.length + ' кодов', 'success');
+    if (document.getElementById('autoClearCheck').checked) clearAll();
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Скопировано ' + codes.length + ' кодов', 'success');
+    if (document.getElementById('autoClearCheck').checked) clearAll();
+  });
 }
 
-function fallbackCopy(text) {
-  var ta = document.createElement('textarea');
-  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-  document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); showToast('📋 Скопировано', 'success'); } catch(e) { showToast('Ошибка копирования', 'error'); }
-  document.body.removeChild(ta);
-}
-
-// ── Share ──
+// ── Share all ──
 function shareAll() {
   if (codes.length === 0) { showToast('Нет кодов для отправки', 'error'); return; }
-  var text = codes.map(function(c,i) { return String(i+1) + '. ' + c.text; }).join('\n');
-  var now = new Date();
-  var cl = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var header = 'QR коды Честного знака\nКатегория: ' + cl + '\nДата: ' + now.toLocaleString('ru-RU') + '\nВсего: ' + codes.length + '\n\n';
+  sortCodes();
+  var text = codes.map(function(c) { return c.text; }).join('\n');
   if (navigator.share) {
-    navigator.share({ title: 'QR коды ЧЗ', text: header + text }).then(function() {
+    navigator.share({ title: 'QR коды ЧЗ', text: text }).then(function() {
       if (document.getElementById('autoClearCheck').checked) clearAll();
     }).catch(function() {});
   } else {
     copyAll();
-    showToast('📤 Текст скопирован — вставьте в приложение', '');
+  }
+}
+
+// ── Manual input ──
+function submitManual() {
+  var input = document.getElementById('manual-input');
+  var val = input.value.trim();
+  if (!val) { showToast('Введите код', 'error'); return; }
+  if (addCode(val, currentCategory)) {
+    input.value = '';
   }
 }
 
 // ── Scanner ──
-function getVideoTrack() {
-  try {
-    var video = document.querySelector('#reader video');
-    if (!video || !video.srcObject) return null;
-    var tracks = video.srcObject.getVideoTracks();
-    return tracks.length ? tracks[0] : null;
-  } catch(_) { return null; }
+function startScanner() {
+  if (scanActive) return;
+  var wrap = document.getElementById('camera-wrap');
+  wrap.classList.remove('hidden');
+  document.getElementById('stop-btn').classList.add('show');
+  document.getElementById('scan-controls').classList.add('show');
+  startBtn.style.display = 'none';
+  statusEl.textContent = 'Запуск камеры...';
+  statusEl.className = 'loading';
+
+  if (!scanner) {
+    scanner = new Html5Qrcode('reader');
+  }
+
+  var config = {
+    fps: 10,
+    qrbox: function(viewfinderWidth, viewfinderHeight) {
+      var size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
+      return { width: size, height: size };
+    },
+    aspectRatio: 1.7777778
+  };
+
+  scanner.start(
+    { facingMode: 'environment' },
+    config,
+    onScanSuccess,
+    onScanFailure
+  ).then(function() {
+    scanActive = true;
+    statusEl.textContent = '✅ Камера работает. Наведите на QR-код.';
+    statusEl.className = 'ok';
+    // Check zoom
+    scanner.getCameraCapabilities().then(function(caps) {
+      if (caps && caps.zoomFeature && caps.zoomFeature.isSupported()) {
+        zoomSupported = true;
+        document.getElementById('zoom-bar').style.display = 'flex';
+        document.getElementById('cam-row').style.display = 'flex';
+        document.getElementById('zoom-presets').style.display = 'flex';
+        document.getElementById('zoom-unavail').style.display = 'none';
+        currentZoom = caps.zoomFeature.value || 1;
+        document.getElementById('zoom-slider').value = currentZoom;
+        document.getElementById('zoom-val').textContent = currentZoom.toFixed(1) + '×';
+      } else {
+        document.getElementById('zoom-unavail').style.display = 'block';
+      }
+    }).catch(function() {
+      document.getElementById('zoom-unavail').style.display = 'block';
+    });
+  }).catch(function(err) {
+    statusEl.textContent = 'Ошибка камеры: ' + err;
+    statusEl.className = 'err';
+    wrap.classList.add('hidden');
+    document.getElementById('stop-btn').classList.remove('show');
+    document.getElementById('scan-controls').classList.remove('show');
+    startBtn.style.display = 'block';
+  });
 }
 
-function applyZoom(val) {
-  val = parseFloat(val);
-  currentZoom = val;
-  document.getElementById('zoom-val').textContent = val.toFixed(1) + '×';
-  document.querySelectorAll('.zoom-preset').forEach(function(btn) {
-    btn.classList.toggle('active', parseFloat(btn.textContent) === Math.round(val));
-  });
-  var track = getVideoTrack();
-  if (!track) return;
-  try {
-    var caps = track.getCapabilities();
-    if (caps.zoom) {
-      var zVal = Math.min(Math.max(val, caps.zoom.min || 1), caps.zoom.max || 8);
-      track.applyConstraints({ advanced: [{ zoom: zVal }] }).catch(function(){});
+function onScanSuccess(decodedText) {
+  if (!scanActive) return;
+  // Pause scanning
+  scanActive = false;
+  try { scanner.pause(); } catch(e) {}
+  statusEl.textContent = '✅ Код распознан!';
+  statusEl.className = 'ok';
+  addCode(decodedText, currentCategory);
+  // Auto restart
+  if (document.getElementById('autoRestartCheck').checked) {
+    setTimeout(function() {
+      if (scanner && scanActive === false) {
+        try {
+          scanner.resume();
+          scanActive = true;
+          statusEl.textContent = '✅ Камера работает. Наведите на QR-код.';
+          statusEl.className = 'ok';
+        } catch(e) {}
+      }
+    }, 1500);
+  }
+}
+
+function onScanFailure(err) {
+  // Silent - most errors are just 'no code found'
+}
+
+function stopCamera() {
+  if (scanner && scanActive) {
+    try { scanner.stop(); } catch(e) {}
+  }
+  scanActive = false;
+  document.getElementById('camera-wrap').classList.add('hidden');
+  document.getElementById('stop-btn').classList.remove('show');
+  document.getElementById('scan-controls').classList.remove('show');
+  startBtn.style.display = 'block';
+  statusEl.textContent = 'Камера остановлена';
+  statusEl.className = '';
+}
+
+// ── Torch ──
+function toggleTorch() {
+  if (!scanner || !scanActive) return;
+  torchOn = !torchOn;
+  scanner.getCameraCapabilities().then(function(caps) {
+    if (caps && caps.torchFeature && caps.torchFeature.isSupported()) {
+      caps.torchFeature.apply(torchOn);
+      document.getElementById('torch-btn').classList.toggle('on', torchOn);
+      document.getElementById('torch-btn').textContent = torchOn ? '🔦 Фонарик ON' : '🔦 Фонарик';
     }
-  } catch(_) {}
+  }).catch(function() {});
+}
+
+// ── Zoom ──
+function applyZoom(val) {
+  currentZoom = parseFloat(val);
+  document.getElementById('zoom-val').textContent = currentZoom.toFixed(1) + '×';
+  if (scanner && scanActive) {
+    scanner.getCameraCapabilities().then(function(caps) {
+      if (caps && caps.zoomFeature && caps.zoomFeature.isSupported()) {
+        caps.zoomFeature.apply(currentZoom);
+      }
+    }).catch(function() {});
+  }
 }
 
 function setZoomPreset(val) {
   document.getElementById('zoom-slider').value = val;
   applyZoom(val);
-}
-
-async function toggleTorch() {
-  var track = getVideoTrack();
-  if (!track) return;
-  try {
-    torchOn = !torchOn;
-    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-    var btn = document.getElementById('torch-btn');
-    btn.textContent = torchOn ? '🔦 Вкл' : '🔦 Фонарик';
-    btn.classList.toggle('on', torchOn);
-  } catch(e) { torchOn = false; }
-}
-
-function probeCapabilities() {
-  setTimeout(function() {
-    var track = getVideoTrack();
-    document.getElementById('scan-controls').classList.add('show');
-    document.getElementById('cam-row').style.display = 'flex';
-    if (!track) { document.getElementById('zoom-unavail').style.display = 'block'; return; }
-    try {
-      var caps = track.getCapabilities ? track.getCapabilities() : {};
-      if (caps.zoom) {
-        zoomSupported = true;
-        var slider = document.getElementById('zoom-slider');
-        slider.min = caps.zoom.min || 1;
-        slider.max = Math.min(caps.zoom.max || 5, 8);
-        slider.step = caps.zoom.step || 0.1;
-        slider.value = currentZoom;
-        document.getElementById('zoom-bar').style.display = 'flex';
-        var presets = document.querySelectorAll('.zoom-preset');
-        var anyVisible = false;
-        presets.forEach(function(btn) {
-          var v = parseFloat(btn.textContent);
-          if (v <= (caps.zoom.max || 5)) { btn.style.display = ''; anyVisible = true; }
-          else btn.style.display = 'none';
-        });
-        if (anyVisible) document.getElementById('zoom-presets').style.display = 'flex';
-      } else {
-        document.getElementById('zoom-unavail').style.display = 'block';
-      }
-      if (!caps.torch) document.getElementById('torch-btn').style.display = 'none';
-      if (caps.focusMode && caps.focusMode.includes('continuous')) {
-        track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function(){});
-      }
-    } catch(e) { document.getElementById('zoom-unavail').style.display = 'block'; }
-  }, 900);
-}
-
-async function stopCamera() {
-  if (scanner) {
-    scanActive = false;
-    try { await scanner.stop(); } catch(_) {}
-    scanner = null;
-  }
-  if (torchOn) torchOn = false;
-  document.getElementById('camera-wrap').classList.add('hidden');
-  document.getElementById('stop-btn').classList.remove('show');
-  document.getElementById('scan-controls').classList.remove('show');
-  setStatus('');
-  startBtn.style.display = 'block';
-}
-
-function setStatus(msg, cls) {
-  statusEl.textContent = msg;
-  statusEl.className = cls || '';
-}
-
-async function startScanner() {
-  startBtn.style.display = 'none';
-  document.getElementById('camera-wrap').classList.remove('hidden');
-  document.getElementById('stop-btn').classList.add('show');
-  torchOn = false; zoomSupported = false; currentZoom = 1;
-  var sc = document.getElementById('scan-controls');
-  sc.classList.remove('show');
-  document.getElementById('zoom-bar').style.display = 'none';
-  document.getElementById('cam-row').style.display = 'none';
-  document.getElementById('zoom-presets').style.display = 'none';
-  document.getElementById('zoom-unavail').style.display = 'none';
-  document.getElementById('zoom-slider').value = 1;
-  document.getElementById('zoom-val').textContent = '1×';
-  var tb = document.getElementById('torch-btn');
-  tb.textContent = '🔦 Фонарик'; tb.classList.remove('on'); tb.style.display = '';
-  document.querySelectorAll('.zoom-preset').forEach(function(b,i) { b.classList.toggle('active', i===0); });
-  setStatus('Запрашиваю доступ к камере…');
-
-  var crptFormats = [
-    Html5QrcodeSupportedFormats.DATA_MATRIX,
-    Html5QrcodeSupportedFormats.QR_CODE,
-    Html5QrcodeSupportedFormats.CODE_128,
-  ];
-
-  var videoConstraints = {
-    facingMode: { ideal: 'environment' },
-    width: { ideal: 3840 },
-    height: { ideal: 2160 },
-    frameRate: { ideal: 30 },
-  };
-
-  var qrbox = { width: 200, height: 200 };
-
-  var scanConfig = {
-    fps: 30,
-    qrbox: qrbox,
-    aspectRatio: 1.0,
-    formatsToSupport: crptFormats,
-    disableFlip: false,
-  };
-
-  async function tryStart(constraints) {
-    scanner = new Html5Qrcode('reader', {
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-      verbose: false,
-    });
-    await scanner.start(constraints, scanConfig, onScanSuccess, function(){});
-  }
-
-  try {
-    await tryStart(videoConstraints);
-  } catch(e1) {
-    try {
-      if (scanner) { try { await scanner.stop(); } catch(_) {} scanner = null; }
-      await tryStart({ facingMode: 'environment' });
-    } catch(e2) {
-      try {
-        if (scanner) { try { await scanner.stop(); } catch(_) {} scanner = null; }
-        await tryStart(true);
-      } catch(e3) {
-        startBtn.style.display = 'block';
-        if (/NotAllowed|Permission/i.test(e3.toString()))
-          setStatus('⛔ Доступ к камере запрещён. Разрешите в настройках браузера.', 'err');
-        else if (/NotFound/i.test(e3.toString()))
-          setStatus('📵 Камера не найдена. Введите код вручную.', 'err');
-        else
-          setStatus('❌ Не удалось запустить камеру: ' + e3.message, 'err');
-        return;
-      }
-    }
-  }
-
-  scanActive = true;
-  probeCapabilities();
-  setStatus('Наведите камеру на QR-код или DataMatrix…');
-}
-
-var lastScan = 0;
-function onScanSuccess(raw) {
-  if (!scanActive) return;
-  var now = Date.now();
-  if (now - lastScan < 1200) return;
-  lastScan = now;
-  scanActive = false;
-  scanner.stop().catch(function(){});
-  document.getElementById('camera-wrap').classList.add('hidden');
-  document.getElementById('stop-btn').classList.remove('show');
-  try { navigator.vibrate(120); } catch(_) {}
-  addCode(raw);
-  var autoRestart = document.getElementById('autoRestartCheck').checked;
-  if (autoRestart) {
-    setTimeout(function() { startScanner(); }, 1500);
-  } else {
-    startBtn.style.display = 'block';
-  }
+  document.querySelectorAll('.zoom-preset').forEach(function(el) {
+    el.classList.toggle('active', parseFloat(el.textContent) === val);
+  });
 }
 
 // ── Init ──
@@ -723,10 +774,15 @@ renderCodes();
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(function(e) {
-    console.log('SW registration failed:', e);
+  navigator.serviceWorker.register('sw.js', { scope: '/Scan_Save_Send_qr/' }).catch(function(err) {
+    console.log('SW registration failed:', err);
   });
 }
+
+// Keyboard support for manual input
+document.getElementById('manual-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitManual();
+});
 </script>
 </body>
 </html>
