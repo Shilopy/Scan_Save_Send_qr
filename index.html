@@ -635,7 +635,10 @@ function submitManual() {
 
 // ── Scanner ──
 function startScanner() {
-  if (scanActive) return;
+  if (scanActive) {
+    showToast('Камера уже запущена', 'error');
+    return;
+  }
   var wrap = document.getElementById('camera-wrap');
   wrap.classList.remove('hidden');
   document.getElementById('stop-btn').classList.add('show');
@@ -644,9 +647,13 @@ function startScanner() {
   statusEl.textContent = 'Запуск камеры...';
   statusEl.className = 'loading';
 
-  if (!scanner) {
-    scanner = new Html5Qrcode('reader');
+  // Если старый scanner есть — остановить
+  if (scanner) {
+    try { scanner.stop(); } catch(e) {}
+    scanner = null;
   }
+
+  scanner = new Html5Qrcode('reader');
 
   var config = {
     fps: 10,
@@ -671,12 +678,13 @@ function startScanner() {
       probeCapabilities();
     }, 500);
   }).catch(function(err) {
-    statusEl.textContent = 'Ошибка камеры: ' + err;
+    statusEl.textContent = 'Ошибка: ' + (err.message || err);
     statusEl.className = 'err';
     wrap.classList.add('hidden');
     document.getElementById('stop-btn').classList.remove('show');
     document.getElementById('scan-controls').classList.remove('show');
     startBtn.style.display = 'block';
+    scanner = null;
   });
 }
 
