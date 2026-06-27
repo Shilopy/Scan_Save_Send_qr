@@ -456,6 +456,11 @@ function restoreHistory(idx) {
   } catch(e) {}
 }
 
+// ── Save history on every new scan ──
+function autoSaveHistory() {
+  saveSessionToHistory();
+}
+
 // ── Render codes ──
 function renderCodes() {
   var has = codes.length > 0;
@@ -504,6 +509,7 @@ function addCode(text, cat) {
   }
   codes.push({ text: short, cat: cat || currentCategory });
   saveToLocalStorage();
+  autoSaveHistory();
   renderCodes();
   // Vibrate
   try { navigator.vibrate(100); } catch(_) {}
