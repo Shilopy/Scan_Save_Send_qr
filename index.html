@@ -127,6 +127,8 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 .history-item .hi-cat.light{background:rgba(245,158,11,.15);color:var(--cat-light)}
 .history-item .hi-cat.build{background:rgba(59,130,246,.15);color:var(--cat-build)}
 .history-item .hi-restore{font-size:11px;color:var(--blue);cursor:pointer;font-weight:600;background:none;border:none;padding:4px 8px}
+.history-item .hi-del{font-size:14px;color:var(--red);cursor:pointer;background:none;border:none;padding:4px 6px;opacity:.6;line-height:1}
+.history-item .hi-del:hover{opacity:1}
 .history-empty{text-align:center;padding:24px;color:var(--sub);font-size:13px}
 .history-search{width:100%;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;outline:none;margin-bottom:8px}
 .history-search:focus{border-color:var(--blue)}
@@ -429,7 +431,7 @@ function renderHistory(list, filterText) {
         var ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
         var cl = h.category === 'light' ? '👕 Лёгкая пром.' : '🏗️ Строит. мат.';
         var cc = h.category === 'light' ? 'light' : 'build';
-        return '<div class="history-item"><div><div class="hi-date">' + esc(ds) + '</div><div><span class="hi-cat ' + cc + '">' + cl + '</span></div></div><div style="display:flex;align-items:center;gap:8px"><span class="hi-count">' + h.count + ' шт</span><button class="hi-restore" onclick="restoreHistory(' + idx + ')">↩ Восстановить</button></div></div>';
+        return '<div class="history-item"><div><div class="hi-date">' + esc(ds) + '</div><div><span class="hi-cat ' + cc + '">' + cl + '</span></div></div><div style="display:flex;align-items:center;gap:6px"><span class="hi-count">' + h.count + ' шт</span><button class="hi-restore" onclick="restoreHistory(' + idx + ')">↩</button><button class="hi-del" onclick="deleteHistory(' + idx + ')" title="Удалить">✕</button></div></div>';
       }).join('');
     }
   } catch(e) { list.innerHTML = '<div class="history-empty">Ошибка загрузки истории</div>'; }
@@ -440,6 +442,17 @@ function filterHistory() {
 }
 
 function closeHistory() { document.getElementById('history-modal').classList.remove('show'); }
+
+function deleteHistory(idx) {
+  try {
+    var history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    if (idx < 0 || idx >= history.length) return;
+    history.splice(idx, 1);
+    localStorage.setItem('ssq-history', JSON.stringify(history));
+    showToast('Запись удалена', 'success');
+    renderHistory(document.getElementById('history-list'), document.getElementById('history-search').value);
+  } catch(e) {}
+}
 
 function restoreHistory(idx) {
   try {
