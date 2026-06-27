@@ -583,7 +583,8 @@ function saveCsv() {
 
 // ── Download helper ──
 function downloadFile(content, filename, mime) {
-  var blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  // BOM (\uFEFF) для правильного отображения кириллицы в Windows
+  var blob = new Blob(['\uFEFF' + content], { type: mime + ';charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
