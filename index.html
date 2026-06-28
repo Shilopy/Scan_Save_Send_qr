@@ -517,9 +517,9 @@ function updateTargetProgress() {
 // ── Add code ──
 function addCode(text, cat) {
   if (!text || text.length === 0) return false;
-  // Берём первые 31 символ как в первой версии (raw.substring(0, 31))
+  // Берём первые 31 символ, захватывая 32 из-за возможных escape-символов
   var raw = text.toString();
-  var short = raw.substring(0, 31);
+  var short = raw.substring(0, 32).substring(0, 31);
   if (short.length < 1) return false;
   // Сообщаем точную длину
   console.log('SCAN RAW LENGTH:', raw.length, 'SHORT LENGTH:', short.length, 'VALUE:', short);
