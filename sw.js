@@ -17,6 +17,29 @@ const PRECACHE_URLS = [
 ];
 
 // Установка — кэшируем основные ресурсы
+// Немедленно удаляем все старые кэши при старте
+self.addEventListener('install', function(event) {
+  self.skipWaiting();
+  caches.keys().then(function(names) {
+    return Promise.all(names.map(function(name) {
+      return caches.delete(name);
+    }));
+  });
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(self.clients.claim());
+});
+
+// Стратегия: только сеть, никакого кэша для index.html
+self.addEventListener('fetch', function(event) {
+  event.respondWith(fetch(event.request).catch(function() {
+    return caches.match(event.request);
+  }));
+});
+
+/*
+// Старый код, отключаем полностью:
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -77,3 +100,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+*/
