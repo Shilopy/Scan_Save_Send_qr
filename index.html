@@ -515,10 +515,10 @@ function updateTargetProgress() {
 // ── Add code ──
 function addCode(text, cat) {
   if (!text || text.length === 0) return false;
-  // Берём первые 31 символ от сканера, без trim() и без изменений
-  var full = text.toString();
-  var short = full.slice(0, 31);
-  // Если код короче 31 — берём весь
+  // Берём ровно 31 символ от начала кода
+  var full = text.toString().trim();
+  var short = full.slice(0, 32).slice(0, 31);
+  // Если код короче — берём весь как есть
   if (full.length < 31) {
     short = full;
   }
