@@ -515,7 +515,13 @@ function updateTargetProgress() {
 // ── Add code ──
 function addCode(text, cat) {
   if (!text || text.length === 0) return false;
-  var short = text.substring(0, 31);
+  // Берём первые 31 символ от сканера, без trim() и без изменений
+  var full = text.toString();
+  var short = full.slice(0, 31);
+  // Если код короче 31 — берём весь
+  if (full.length < 31) {
+    short = full;
+  }
   // Duplicate check
   for (var i = 0; i < codes.length; i++) {
     if (codes[i].text === short) {
@@ -533,7 +539,7 @@ function addCode(text, cat) {
   playBeep();
   // Check target immediately
   checkTargetReached();
-  showToast('Код добавлен (' + codes.length + ')', 'success');
+  showToast('✅ ' + short.length + ' символов (' + codes.length + ')', 'success');
   return true;
 }
 
