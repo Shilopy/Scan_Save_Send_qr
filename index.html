@@ -582,38 +582,57 @@ function getFilename(ext) {
   return 'codes.' + ext;
 }
 
-// ── Save TXT ──
+// ── Build file content ──
+function buildFileContent() {
+  sortCodes();
+  var now = new Date();
+  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+  var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
+  var body = codes.map(function(c) { return c.text; }).join('\n');
+  return header + body;
+}
+
+// ── Save TXT (скачать + открыть Share на телефоне) ──
 function saveTxt() {
   if (codes.length === 0) { showToast('Нет кодов для сохранения', 'error'); return; }
-  sortCodes();
-  var now = new Date();
-  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var header = 'QR коды Честного знака\r\nКатегория: ' + catName + '\r\nДата: ' + ds + '\r\nВсего: ' + codes.length + '\r\n\r\n';
-  var body = codes.map(function(c) { return c.text; }).join('\r\n');
-  var content = header + body;
-  downloadFile(content, getFilename('txt'), 'text/plain;charset=utf-8');
-  if (document.getElementById('autoClearCheck').checked) clearAll();
+  var content = buildFileContent();
+  var filename = getFilename('txt');
+  // Пробуем Share с файлом (на телефонах)
+  if (navigator.share && navigator.canShare) {
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    var file = new File([blob], filename, { type: 'text/plain' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'QR коды ЧЗ' }).catch(function() {});
+      if (document.getElementById('autoClearCheck').checked) clearAll();
+      return;
+    }
+  }
+  // Если Share не поддерживается — обычное скачивание
+  downloadFile(content, filename, 'text/plain;charset=utf-8');
 }
 
-// ── Save CSV ──
+// ── Save CSV (скачать + открыть Share на телефоне) ──
 function saveCsv() {
   if (codes.length === 0) { showToast('Нет кодов для сохранения', 'error'); return; }
-  sortCodes();
-  // CSV: заголовок как комментарий + только коды, один на строку, без разделителей
-  var now = new Date();
-  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
-  var header = '# QR коды Честного знака\n# Категория: ' + catName + '\n# Дата: ' + ds + '\n# Всего: ' + codes.length + '\n\n';
-  var body = codes.map(function(c) { return c.text; }).join('\n');
-  var content = header + body;
-  downloadFile(content, getFilename('csv'), 'text/plain;charset=utf-8');
-  if (document.getElementById('autoClearCheck').checked) clearAll();
+  var content = buildFileContent();
+  var filename = getFilename('csv');
+  // Пробуем Share с файлом (на телефонах)
+  if (navigator.share && navigator.canShare) {
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    var file = new File([blob], filename, { type: 'text/plain' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'QR коды ЧЗ' }).catch(function() {});
+      if (document.getElementById('autoClearCheck').checked) clearAll();
+      return;
+    }
+  }
+  // Если Share не поддерживается — обычное скачивание
+  downloadFile(content, filename, 'text/plain;charset=utf-8');
 }
 
-// ── Download helper ──
+// ── Download helper (только скачивание, fallback) ──
 function downloadFile(content, filename, mime) {
-  // Сохраняем в UTF-8 без BOM для лучшей совместимости с телефонами
   var blob = new Blob([content], { type: mime + ';charset=utf-8' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -624,9 +643,6 @@ function downloadFile(content, filename, mime) {
   document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   showToast('Файл ' + filename + ' сохранён', 'success');
-  // Показываем кнопку «Загрузки»
-  var dlBtn = document.getElementById('openDownloadsBtn');
-  if (dlBtn) dlBtn.style.display = '';
 }
 
 // ── Open / Share last saved file ──
