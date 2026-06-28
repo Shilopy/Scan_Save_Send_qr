@@ -629,14 +629,30 @@ function downloadFile(content, filename, mime) {
   if (dlBtn) dlBtn.style.display = '';
 }
 
-// ── Open downloads folder (Android) ──
+// ── Open / Share last saved file ──
 function openDownloads() {
-  // Пытаемся открыть content:// или file:// — работает только на Android
-  try {
-    window.open('content://com.android.chrome.FileProvider/downloads');
-  } catch(e) {}
-  // Альтернатива: показываем Toast с инструкцией
-  showToast('Файл сохранён в папке Загрузки. Откройте приложение «Файлы»', '');
+  // Если есть сохранённые файлы — пытаемся поделиться последним
+  if (codes.length === 0) { showToast('Сначала сохраните файл', 'error'); return; }
+  
+  if (navigator.share) {
+    // Создаём файл на лету и открываем окно «Поделиться»
+    var now = new Date();
+    var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+    var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
+    var body = codes.map(function(c) { return c.text; }).join('\n');
+    var content = header + body;
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    var file = new File([blob], getFilename('txt'), { type: 'text/plain' });
+    
+    navigator.share({
+      title: 'QR коды ЧЗ',
+      text: body,
+      files: [file]
+    }).catch(function() {});
+  } else {
+    showToast('Файл сохранён. Откройте приложение «Файлы» → папка Загрузки', '');
+  }
 }
 
 // ── Copy all ──
