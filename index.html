@@ -517,12 +517,11 @@ function updateTargetProgress() {
 // ── Add code ──
 function addCode(text, cat) {
   if (!text || text.length === 0) return false;
-  // Берём первые 31 символ, захватывая 32 из-за возможных escape-символов
+  // Берём 31 символ, очищая от escape-символов (\u001C, \u001D и т.д.)
   var raw = text.toString();
-  var short = raw.substring(0, 32).substring(0, 31);
+  var clean = raw.replace(/[\u0000-\u001F]/g, '');
+  var short = clean.substring(0, 31);
   if (short.length < 1) return false;
-  // Сообщаем точную длину
-  console.log('SCAN RAW LENGTH:', raw.length, 'SHORT LENGTH:', short.length, 'VALUE:', short);
   // Duplicate check
   for (var i = 0; i < codes.length; i++) {
     if (codes[i].text === short) {
