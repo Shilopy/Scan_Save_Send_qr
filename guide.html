@@ -7,8 +7,8 @@
 <title>Инструкция — QR Сканер ЧЗ</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0a0a0a;--card:#1c1c1e;--border:#2c2c2e;--text:#f0f0f0;--sub:#888;--blue:#5b9cf6;--green:#4ade80}
-[data-theme="light"]{--bg:#f5f3ef;--card:#fff;--border:#e2dfd8;--text:#1a1917;--sub:#6b6860;--blue:#1a4db8;--green:#15803d}
+:root{--bg:#0a0a0a;--card:#1c1c1e;--border:#2c2c2e;--text:#f0f0f0;--sub:#888;--blue:#5b9cf6;--green:#4ade80;--orange:#fb923c}
+[data-theme="light"]{--bg:#f5f3ef;--card:#fff;--border:#e2dfd8;--text:#1a1917;--sub:#6b6860;--blue:#1a4db8;--green:#15803d;--orange:#ea580c}
 html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6}
 body{padding:16px;max-width:600px;margin:0 auto}
 h1{font-size:20px;margin-bottom:4px}
@@ -18,9 +18,14 @@ ul{padding-left:20px;margin-bottom:12px}
 li{margin-bottom:4px}
 .step{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .step .num{display:inline-block;background:var(--blue);color:#fff;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:700;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:13px}
+th,td{border:1px solid var(--border);padding:8px 10px;text-align:left}
+th{background:var(--blue);color:#fff;font-weight:700}
+tr:nth-child(even){background:var(--card)}
 .back{display:inline-block;margin-top:16px;padding:8px 16px;border-radius:10px;background:var(--card);border:1.5px solid var(--border);color:var(--text);text-decoration:none;font-size:13px;font-weight:600}
 .back:active{opacity:.7}
 hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+code{background:var(--card);padding:2px 6px;border-radius:4px;font-size:13px;border:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -30,12 +35,13 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 <h2>📲 Установка на телефон</h2>
 
 <div class="step">
-  <div class="num">Android (Chrome)</div>
+  <div class="num">Любой Android (Chrome, Firefox, Samsung Internet)</div>
   <ol>
-    <li>Откройте сайт в Chrome</li>
+    <li>Откройте сайт в браузере</li>
     <li>Нажмите ⋮ (меню) → «Добавить на главный экран»</li>
-    <li>Или дождитесь баннера «Установить приложение»</li>
+    <li>Готово! Ярлык появится на рабочем столе</li>
   </ol>
+  <p><strong>Важно:</strong> Зум и фонарик работают только в <strong>Google Chrome</strong>. В Firefox и других браузерах эти функции могут быть недоступны из-за ограничений браузера.</p>
 </div>
 
 <div class="step">
@@ -68,7 +74,7 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 
 <div class="step">
   <div class="num">4. Сканируйте следующий код</div>
-  <p>Камера перезапустится автоматически через 1.5 секунды.</p>
+  <p>Камера перезапустится автоматически через 1.5 секунды (если включён авто-перезапуск).</p>
   <p>Повторные коды не добавляются — защита от дублей.</p>
 </div>
 
@@ -78,17 +84,45 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
   <ul>
     <li><strong>💾 .txt</strong> — скачать файл с кодами</li>
     <li><strong>📊 .csv</strong> — скачать в формате CSV (Excel)</li>
-    <li><strong>📋 Копировать</strong> — скопировать все коды в буфер</li>
-    <li><strong>📤 Поделиться</strong> — отправить через Telegram, WhatsApp и др.</li>
+    <li><strong>📋 Копировать</strong> — скопировать все коды в буфер обмена</li>
+    <li><strong>📤 Поделиться</strong> — отправить через Telegram, WhatsApp, email</li>
+    <li><strong>📂 Загрузки</strong> — открыть окно отправки файла</li>
     <li><strong>🗑 Очистить</strong> — удалить все коды</li>
   </ul>
 </div>
 
-<h2>⚙️ Полезные опции</h2>
+<h2>⚙️ Кнопка «🧹 Очистить после отправки»</h2>
+<p>Когда галочка стоит — после сохранения/копирования/отправки список кодов очищается автоматически.</p>
+
+<table>
+  <tr><th>Включить</th><th>Выключить</th></tr>
+  <tr><td>Отсканировали партию кодов, отправили — начинаете новую партию</td><td>Нужно отправить одни и те же коды в несколько мест (сначала в Telegram, потом в email)</td></tr>
+  <tr><td>Сотрудник сканирует, отправляет — и передаёт телефон другому</td><td>Хотите проверить, что сохранилось, прежде чем очищать</td></tr>
+  <tr><td>Работа с одной паллетой = одна сессия</td><td>Сканируете несколько паллет, потом одним файлом отправляете всё</td></tr>
+</table>
+
+<h2>⚙️ Кнопка «🔄 Авто-перезапуск»</h2>
+<p>Когда галочка стоит — после каждого сканирования камера автоматически перезапускается через 1.5 сек.</p>
+
+<table>
+  <tr><th>Включить</th><th>Выключить</th></tr>
+  <tr><td>Сканируете много кодов подряд (паллету, партию товаров)</td><td>Нужно проверить отсканированный код, прежде чем сканировать следующий</td></tr>
+  <tr><td>Сотрудник работает быстро, не хочет лишних нажатий</td><td>Камера зависает или тормозит на слабом телефоне</td></tr>
+  <tr><td>Конвейерный режим — сканирование без пауз</td><td>Хотите посмотреть на код, потом вручную запустить камеру снова</td></tr>
+</table>
+
+<h2>🔦 Почему не работают зум и фонарик в Firefox</h2>
+<p>Функции зума и фонарика используют API <code>MediaStreamTrack.applyConstraints()</code>, который поддерживается не во всех браузерах.</p>
 <ul>
-  <li><strong>🧹 Очистить после отправки</strong> — автоматически очищать список после копирования/отправки</li>
+  <li><strong>✅ Google Chrome</strong> — зум и фонарик работают</li>
+  <li><strong>❌ Firefox</strong> — зум и фонарик <strong>не работают</strong> (ограничение браузера)</li>
+  <li><strong>❌ Samsung Internet</strong> — может не поддерживать</li>
+</ul>
+<p><strong>Рекомендация:</strong> используйте <strong>Google Chrome</strong> для полной функциональности.</p>
+
+<h2>⚙️ Другие опции</h2>
+<ul>
   <li><strong>🔊 Звук</strong> — включить/выключить звуковой сигнал при сканировании</li>
-  <li><strong>🔄 Авто-перезапуск</strong> — камера перезапускается автоматически после каждого сканирования</li>
   <li><strong>🎯 Целевое количество</strong> — установите план сканирования, приложение оповестит о достижении</li>
   <li><strong>📋 История</strong> — просмотр и восстановление предыдущих сессий с поиском</li>
   <li><strong>🌙 Тёмная/светлая тема</strong> — переключение в верхней панели</li>
@@ -107,6 +141,8 @@ hr{border:none;border-top:1px solid var(--border);margin:16px 0}
 Неограниченно. Все коды сохраняются в памяти браузера.</p>
 <p><strong>Как восстановить предыдущую сессию?</strong><br>
 Нажмите «📋 История» в верхней панели, найдите нужную сессию и нажмите «↩ Восстановить».</p>
+<p><strong>Сколько сотрудников могут пользоваться одновременно?</strong><br>
+Неограниченно. Каждый работает со своим телефоном, данные не синхронизируются между устройствами.</p>
 
 <hr>
 <a class="back" href="index.html">← На главную</a>
