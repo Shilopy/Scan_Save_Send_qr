@@ -860,10 +860,36 @@ loadFromLocalStorage();
 loadTargetCount();
 renderCodes();
 
-// Register Service Worker
+// Register Service Worker + auto-update on new version
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js', { scope: '/Scan_Save_Send_qr/' }).catch(function(err) {
+  navigator.serviceWorker.register('sw.js', { scope: '/Scan_Save_Send_qr/', updateViaCache: 'none' }).then(function(reg) {
+    // Новая версия SW найдена — обновляем сразу
+    reg.addEventListener('updatefound', function() {
+      var newWorker = reg.installing;
+      newWorker.addEventListener('statechange', function() {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Новая версия загружена — перезагружаем страницу
+          if (confirm('Доступна новая версия приложения. Обновить?')) {
+            window.location.reload();
+          }
+        }
+      });
+    });
+    // Проверка обновлений каждые 5 минут
+    setInterval(function() { reg.update(); }, 5 * 60 * 1000);
+  }).catch(function(err) {
     console.log('SW registration failed:', err);
+  });
+}
+
+// Принудительно удаляем старые кэши при загрузке
+if ('caches' in window) {
+  caches.keys().then(function(names) {
+    names.forEach(function(name) {
+      if (name.indexOf('ssq-cache') >= 0 && name !== 'ssq-cache-v3') {
+        caches.delete(name);
+      }
+    });
   });
 }
 
