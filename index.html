@@ -517,13 +517,12 @@ function updateTargetProgress() {
 // ── Add code ──
 function addCode(text, cat) {
   if (!text || text.length === 0) return false;
-  // Берём ровно 31 символ от начала кода
-  var full = text.toString().trim();
-  var short = full.slice(0, 32).slice(0, 31);
-  // Если код короче — берём весь как есть
-  if (full.length < 31) {
-    short = full;
-  }
+  // Берём первые 31 символ как в первой версии (raw.substring(0, 31))
+  var raw = text.toString();
+  var short = raw.substring(0, 31);
+  if (short.length < 1) return false;
+  // Сообщаем точную длину
+  console.log('SCAN RAW LENGTH:', raw.length, 'SHORT LENGTH:', short.length, 'VALUE:', short);
   // Duplicate check
   for (var i = 0; i < codes.length; i++) {
     if (codes[i].text === short) {
