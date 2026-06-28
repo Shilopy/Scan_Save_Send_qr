@@ -193,7 +193,7 @@ body{padding-bottom:env(safe-area-inset-bottom)}
 </div>
 
 <div class="manual-row" id="manual-row">
-  <input id="manual-input" type="text" inputmode="text" placeholder="Введите код вручную (31 символ)" maxlength="31">
+  <input id="manual-input" type="text" inputmode="text" placeholder="Вставьте код ЧЗ (31 символ)" maxlength="31">
   <button onclick="submitManual()">➕ Добавить</button>
 </div>
 
@@ -218,6 +218,7 @@ body{padding-bottom:env(safe-area-inset-bottom)}
   <button class="action-btn" id="copyBtn" onclick="copyAll()">📋 Копировать</button>
   <button class="action-btn green" id="shareBtn" onclick="shareAll()">📤 Поделиться</button>
   <button class="action-btn danger" id="clearBtn" onclick="clearAll()">🗑 Очистить</button>
+  <button class="action-btn" id="openDownloadsBtn" onclick="openDownloads()" style="display:none">📂 Загрузки</button>
 </div>
 
 <div class="options-row" id="options-row" style="display:none">
@@ -513,8 +514,8 @@ function updateTargetProgress() {
 
 // ── Add code ──
 function addCode(text, cat) {
-  if (!text || text.trim().length === 0) return false;
-  var short = text.trim().substring(0, 31);
+  if (!text || text.length === 0) return false;
+  var short = text.substring(0, 31);
   // Duplicate check
   for (var i = 0; i < codes.length; i++) {
     if (codes[i].text === short) {
@@ -617,6 +618,19 @@ function downloadFile(content, filename, mime) {
   document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   showToast('Файл ' + filename + ' сохранён', 'success');
+  // Показываем кнопку «Загрузки»
+  var dlBtn = document.getElementById('openDownloadsBtn');
+  if (dlBtn) dlBtn.style.display = '';
+}
+
+// ── Open downloads folder (Android) ──
+function openDownloads() {
+  // Пытаемся открыть content:// или file:// — работает только на Android
+  try {
+    window.open('content://com.android.chrome.FileProvider/downloads');
+  } catch(e) {}
+  // Альтернатива: показываем Toast с инструкцией
+  showToast('Файл сохранён в папке Загрузки. Откройте приложение «Файлы»', '');
 }
 
 // ── Copy all ──
