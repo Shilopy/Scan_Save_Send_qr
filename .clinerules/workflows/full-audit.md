@@ -1,17 +1,22 @@
-# Full Audit Workflow
+# Full Project Audit
 
-## Проверка после изменений
-1. `git -C C:\Projects\Scan_Save_Send_qr status` — чистота рабочей директории
-2. Синтаксис JS: проверить баланс `{}` и `()`, наличие `</html>`, `</script>`, `</body>`
-3. `git -C C:\Projects\Scan_Save_Send_qr log --oneline -3` — последние коммиты
-4. `git -C C:\Projects\Scan_Save_Send_qr diff --cached --stat` — объём изменений
+Выполняй шаги СТРОГО последовательно. После каждого шага СТОП. Жди подтверждения пользователя "далее" или "ok".
 
-## Проверки для PWA
-- `manifest.json`: проверить start_url, scope, icons
-- `sw.js`: проверить PRECACHE_URLS соответствуют реальным файлам
-- `index.html`: проверить `<link rel="manifest">` и регистрацию SW
+## Step 1: Architecture & Dependency Map
+- Прочитай `requirements.txt` и структуру папок.
+- Найди все точки входа и основные модули (core, web, db).
+- Вывод: Markdown таблица (Модуль | Назначение | Зависимости | Точки входа).
 
-## Проверки для сканера
-- `index.html`: проверить `qrbox`, `fps`, `formatsToSupport`
-- Проверить что `addCode()` вызывается в `onScanSuccess()`
-- Проверить что `saveSessionToHistory()` вызывается при `clearAll()`
+## Step 2: Security & Crypto Audit
+- Активируй скилл `sec-audit`.
+- Просканируй код на хардкод секретов, уязвимости RSA/ЭЦП, утечки в логах.
+- Вывод: Таблица уязвимостей (Файл:Строка | Риск | Фикс).
+
+## Step 3: Async, Perf & DB Audit
+- Активируй скилл `perf-audit`.
+- Найди блокировки Event Loop (sync в async), проблемы с памятью (Pandas), конкурентный доступ к DuckDB.
+- Вывод: Список bottleneck'ов с метриками влияния.
+
+## Step 4: Action Plan Generation
+- Сгруппируй найденные проблемы: P0 (Blocker/Security), P1 (Perf/Stability), P2 (Refactor/Clean).
+- Вывод: Пошаговый план исправлений. Не пиши код, только план. Жди выбора задачи пользователем.

@@ -1,0 +1,259 @@
+WITH RankedOrders AS (
+    SELECT
+        po.*,
+        CAST(ISNULL(po.[Order amount], 0) AS NUMERIC(15,3)) / 
+        CAST(SUM(ISNULL(po.[Order amount], 0)) OVER (PARTITION BY po.[Document date], po.[Purchasing document]) AS NUMERIC(15,3)) AS share_line,
+        -- Исправленный расчет Payment date
+        CASE 
+            WHEN ISNULL(po.[Lead time], 0) = 0 OR ISNULL(po.[Delivery days], 0) = 0 THEN NULL
+            ELSE DATEADD(DAY, ISNULL(po.[Lead time], 0) - ISNULL(po.[Delivery days], 0), po.[Document date])
+        END AS [Payment date]
+    FROM
+        ASH_ERP_PurchaseOrders_vw AS po
+),
+Payments AS (
+    SELECT
+        [Purchasing date], 
+        [Purchasing document], 
+        SUM([Amount inc VAT]) AS [Amount inc VAT],
+        SUM([Amount inc VAT RUB]) AS [Amount inc VAT RUB]
+    FROM
+        ERP_PurchaseOrders_payment_vw
+    WHERE
+        [Posted] = 1
+    GROUP BY 
+        [Purchasing date], [Purchasing document]
+),
+OrderPaymentStatus AS (
+    SELECT
+        po.[Document date],
+        po.[Purchasing document],
+        SUM(ISNULL(po.[Order amount], 0) + ISNULL(po.[Order VAT], 0)) AS [Order amount inc VAT],
+        ISNULL(p.[Amount inc VAT], 0) AS [Payment amount inc VAT],
+        CASE
+            WHEN ISNULL(p.[Amount inc VAT], 0) = 0 THEN N'Не оплачен'
+            WHEN SUM(ISNULL(po.[Order amount], 0) + ISNULL(po.[Order VAT], 0)) - ISNULL(p.[Amount inc VAT], 0) < 0 THEN N'Переплата'
+            WHEN SUM(ISNULL(po.[Order amount], 0) + ISNULL(po.[Order VAT], 0)) - ISNULL(p.[Amount inc VAT], 0) = 0 THEN N'Оплачен полностью'
+            WHEN SUM(ISNULL(po.[Order amount], 0) + ISNULL(po.[Order VAT], 0)) - ISNULL(p.[Amount inc VAT], 0) > 0 THEN N'Оплачен частично'
+        END AS [PaymentStatus]
+    FROM
+        ASH_ERP_PurchaseOrders_vw po
+    LEFT JOIN
+        Payments p ON po.[Purchasing document] = p.[Purchasing document] AND po.[Document date] = p.[Purchasing date]
+    GROUP BY
+        po.[Document date], po.[Purchasing document], p.[Amount inc VAT]
+),
+Invoices AS (
+    SELECT 
+        [Order date], 
+        [Order No], 
+        SUM([Amount] + [VAT]) AS [Amount inc VAT]
+    FROM 
+        ASH_ERP_Purchases_vw
+    GROUP BY 
+        [Order date], [Order No]
+),
+MinDocumentDates AS (
+    SELECT
+        [Order No],
+        [Product No] AS [Material No],
+        [Supplier No],
+        [Document date],
+        [Document No],
+        YEAR([Order date]) AS OrderYear,
+        MIN([Document date]) OVER (PARTITION BY [Order No], [Product No], YEAR([Order date])) AS MinDocumentDate,
+        FIRST_VALUE([Document No]) OVER (PARTITION BY [Order No], [Product No], YEAR([Order date]) ORDER BY [Document date]) AS MinDocumentNo,
+        ROW_NUMBER() OVER (PARTITION BY [Order No], [Product No], YEAR([Order date]) ORDER BY [Document date]) AS rn
+    FROM
+        ASH_ERP_Purchases_vw
+),
+RankedMinDocumentDates AS (
+    SELECT
+        [Order No],
+        [Material No],
+        [Supplier No],
+        MinDocumentDate,
+        MinDocumentNo,
+        OrderYear,
+        ROW_NUMBER() OVER (PARTITION BY [Order No], [Material No], OrderYear ORDER BY [Document date]) AS rn
+    FROM
+        MinDocumentDates
+),
+LatestPrices AS (
+    SELECT 
+        t1.[Material No], 
+        t1.[Supplier No], 
+        t1.[DateFrom], 
+        t1.[Price_EUR],
+        t1.[Currency],
+        t1.[Price]
+    FROM [ERP_PurchasePrices_vw] t1
+    INNER JOIN (
+        SELECT 
+            [Material No], 
+            [Supplier No], 
+            MAX([DateFrom]) AS last_price_dt 
+        FROM [ERP_PurchasePrices_vw] 
+        GROUP BY 
+            [Material No], 
+            [Supplier No]
+    ) t2 
+    ON (
+        t1.[Material No] = t2.[Material No] 
+        AND t1.[Supplier No] = t2.[Supplier No] 
+        AND t1.DateFrom = t2.last_price_dt
+    )
+),
+QuantityData AS (
+    SELECT 
+        Material_id,
+        SUM(Quantity) AS Total_Quantity
+    FROM 
+        OLAP_Stock_Available_vw
+    WHERE 
+        Dt = (
+            SELECT MAX(Dt)
+            FROM OLAP_Stock_Available_vw
+            WHERE Dt <= CAST(GETDATE() AS DATE)
+        )
+    GROUP BY 
+        Material_id
+)
+SELECT
+    po.[Purchasing document] AS "Номер Заказа",
+    po.[Supplier] AS "Поставщик",
+    po.[Document status] AS "Статус подтверждения",
+    CONVERT(VARCHAR, po.[Document date], 104) AS "Дата создания заказа",
+    CONVERT(VARCHAR, po.[Delivery date], 104) AS "Требуемая дата поставки",
+    CONVERT(VARCHAR, po.[ETA], 104) AS "Расчетная дата доставки ETA",
+    CONVERT(VARCHAR, po.[Shipment date], 104) AS "Дата начала транспортировки",
+    po.[Rail Ship Date] AS "Rail_Ship_Date",
+    po.[Carrier name] AS "Carrier_name",
+    po.[Product No] AS "Артикул",
+    po.[Product] AS "Наименование",
+    po.[Supplier product name] AS "Номенклатура поставщика",
+    -- Данные из таблицы Material
+    m.Range_de AS "Range_de",
+    m.Class_de AS "Class_de",
+    m.Type_de AS "Type_de",
+    FORMAT(po.[Order quantity], 'N0', 'ru-RU') AS "Количество заказано",
+    FORMAT(po.[Order delivered], 'N0', 'ru-RU') AS "Количество поставлено",
+    FORMAT(po.[Still to be delivered], 'N0', 'ru-RU') AS "Осталось поставить",
+    po.[Warehouse ID] AS "# Склада",
+    po.[Supplier Order No] AS "# заказа поставщика",
+    po.[Invoice No] AS "Номер инвойса",
+    po.[Container No] AS "Номер контейнера",
+    po.[CCD] AS "ГТД",
+    po.[Comment] AS "Комментарий",
+    po.[Main supplier] AS "Основной поставщик",
+    qd.Total_Quantity AS "Total crnt Stock",
+    -- Добавленные колонки
+    CASE
+        WHEN po.[Delivery date] IS NULL 
+             OR po.[Delivery date] = CONVERT(DATE, '01.01.0001') 
+        THEN ''
+        WHEN DATEDIFF(DAY, po.[Document date], po.[Delivery date]) < po.[Lead time]
+        THEN 'Not Met(' + CAST(DATEDIFF(DAY, po.[Document date], po.[Delivery date]) AS VARCHAR) + ')'
+        ELSE 'Met'
+    END AS "Контроль создания заказа",
+    CONVERT(VARCHAR, fm.[MinDocumentDate], 104) AS "Дата приемки на склад",
+    fm.[MinDocumentNo] AS "# документа приемки",
+    CASE
+        WHEN fm.[MinDocumentDate] IS NULL THEN NULL
+        WHEN DATEDIFF(DAY, po.[Document date], fm.[MinDocumentDate]) > po.[Lead time]
+        THEN 'Not Met'
+        ELSE 'Met'
+    END AS "Статус доставки заказа",
+    -- Новая логика для "Статус проверки" с учетом нового статуса "Размести заказ"
+    CASE
+        -- 1. Условие для "Размести заказ"
+        WHEN 
+            po.[Document status] IN (N'Согласован', N'Не согласован') 
+            AND po.[Still to be delivered] > 0
+            AND (po.[Delivery date] IS NOT NULL AND po.[Lead time] IS NOT NULL)
+            AND (
+                -- Корректный расчет даты: (Delivery date - Lead time) <= (GETDATE() - 5)
+                DATEDIFF(DAY, DATEADD(DAY, -po.[Lead time], po.[Delivery date]), GETDATE()) >= 5 
+                OR DATEADD(DAY, -po.[Lead time], po.[Delivery date]) < GETDATE()
+            )
+        THEN CAST(N'Размести заказ' AS NVARCHAR(50))
+        
+        -- 2. Существующее условие для "проверить" (оставляем как было)
+        WHEN po.[ETA] < GETDATE() AND po.[Still to be delivered] > 0 
+        THEN CAST(N'проверить' AS NVARCHAR(50))
+        
+        -- 3. Существующее условие для "скоро поставка"
+        WHEN po.[ETA] BETWEEN GETDATE() AND DATEADD(DAY, 10, GETDATE())
+        THEN CAST(N'скоро поставка' AS NVARCHAR(50))
+        
+        ELSE CAST(N'' AS NVARCHAR(50))  
+    END AS "Статус проверки",
+    po.[Order amount RUB] AS "Заказано в RUB",
+    po.share_line * ISNULL(p.[Amount inc VAT RUB], 0) AS "Оплачено в RUB",
+    ISNULL(
+        STUFF((
+            SELECT CHAR(10) + CONVERT(VARCHAR, pp.[Payment date], 104)
+            FROM ERP_PurchaseOrders_payment_vw pp
+            WHERE pp.[Purchasing document] = po.[Purchasing document]
+              AND pp.[Purchasing date] = po.[Document date]
+              AND pp.[Posted] = 1
+            ORDER BY pp.[Payment date]
+            FOR XML PATH('')
+        ), 1, 1, ''),
+        ''
+    ) AS "Date of payment",
+    po.[Lead time] AS "Lead time2",
+    po.[Delivery days] AS "Delivery days",
+    CASE 
+        WHEN ops.[PaymentStatus] <> N'Не оплачен' THEN NULL
+        WHEN po.[Delivery date] IS NULL OR po.[Delivery date] = CONVERT(DATE, '01.01.0001') THEN NULL
+        WHEN ISNULL(po.[Delivery Days], 0) <= 0 THEN NULL
+        ELSE DATEADD(DAY, -ISNULL(po.[Delivery Days], 0) - 7, po.[Delivery date])
+    END AS "Необходимо оплатить до_",
+    CAST(YEAR(po.[Payment date]) AS CHAR(4)) + '_' + RIGHT('0' + CAST(DATEPART(WK, po.[Payment date]) AS VARCHAR(2)), 2) AS "Payment week",
+    po.share_line * i.[Amount inc VAT] AS "Invoice amount inc VAT",
+    po.share_line * p.[Amount inc VAT] AS "Payment amount inc VAT",
+    ops.[PaymentStatus] AS "Order payment status",
+    (ISNULL(po.[Order amount RUB], 0) + ISNULL(po.[Order VAT RUB], 0)) - (po.share_line * ISNULL(p.[Amount inc VAT RUB], 0)) AS "To be paid inc VAT RUB"
+
+FROM
+    RankedOrders AS po
+LEFT JOIN
+    RankedMinDocumentDates fm
+ON
+    po.[Purchasing document] = fm.[Order No]
+    AND po.[Supplier No] = fm.[Supplier No]
+    AND po.[Product No] COLLATE Cyrillic_General_CI_AS = fm.[Material No] COLLATE Cyrillic_General_CI_AS
+    AND YEAR(po.[Document date]) = fm.OrderYear
+    AND fm.rn = 1
+LEFT JOIN
+    QuantityData qd
+ON
+    po.[Product No] COLLATE Cyrillic_General_CI_AS = qd.Material_id COLLATE Cyrillic_General_CI_AS
+LEFT JOIN
+    Payments p
+ON
+    po.[Purchasing document] = p.[Purchasing document]
+    AND po.[Document date] = p.[Purchasing date]
+LEFT JOIN
+    OrderPaymentStatus ops
+ON
+    po.[Purchasing document] = ops.[Purchasing document]
+    AND po.[Document date] = ops.[Document date]
+LEFT JOIN
+    Invoices i
+ON
+    po.[Purchasing document] = i.[Order No]
+    AND po.[Document date] = i.[Order date]
+-- Подключение таблицы Material для получения Range_de, Class_de, Type_de
+LEFT JOIN
+    [Material] m
+ON
+    po.[Product No] COLLATE Cyrillic_General_CI_AS = m.Material_id COLLATE Cyrillic_General_CI_AS
+WHERE
+    YEAR(po.[Document date]) IN (2026, 2027)
+    AND po.[Document date] IS NOT NULL
+ORDER BY
+    po.[Document date],
+    po.[Purchasing document],
+    po.[Product No];
