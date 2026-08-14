@@ -1,0 +1,11 @@
+# Временные файлы и служебное
+node_modules/
+.scratch_verify/
+.reasonix/
+*.log
+.DS_Store
+Thumbs.db
+
+# Локальные конфиги редакторов (личные)
+.vscode/
+.idea/

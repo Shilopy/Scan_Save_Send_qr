@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="QR Сканер ЧЗ">
+<meta name="description" content="Сканирование QR-кодов и DataMatrix Честного знака. Сохранение, копирование и отправка кодов с телефона. PWA — работает офлайн.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="QR Сканер ЧЗ — сканер кодов Честного знака">
+<meta property="og:description" content="Сканируйте QR-коды и DataMatrix Честного знака: сохранение, копирование и отправка кодов прямо с телефона. Работает офлайн.">
+<meta property="og:url" content="https://shilopy.github.io/Scan_Save_Send_qr/">
+<meta property="og:image" content="https://shilopy.github.io/Scan_Save_Send_qr/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<title>QR Сканер ЧЗ</title>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js">
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#5b9cf6;--purple:#a78bfa;--green:#4ade80;--red:#f87171;--orange:#fb923c;--bg:#0a0a0a;--card:#1c1c1e;--border:#2c2c2e;--text:#f0f0f0;--sub:#888;--cat-light:#f59e0b;--cat-build:#3b82f6}
+[data-theme="light"]{--bg:#f5f3ef;--card:#fff;--border:#e2dfd8;--text:#1a1917;--sub:#6b6860;--blue:#1a4db8;--purple:#7c3aed;--green:#15803d;--red:#dc2626;--orange:#ea580c;--cat-light:#d97706;--cat-build:#2563eb}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;transition:background .25s,color .25s;overflow-x:hidden}
+body{padding-bottom:env(safe-area-inset-bottom);background-image:radial-gradient(60% 40% at 50% 0%,rgba(91,156,246,.10),transparent 70%),radial-gradient(50% 35% at 90% 100%,rgba(167,139,250,.10),transparent 70%)}
+[data-theme="light"] body{background-image:radial-gradient(60% 40% at 50% 0%,rgba(91,156,246,.07),transparent 70%),radial-gradient(50% 35% at 90% 100%,rgba(167,139,250,.07),transparent 70%)}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 0;max-width:480px;margin:0 auto}
+.top-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;transition:background .2s;-webkit-tap-highlight-color:transparent}
+.top-btn:active{opacity:.7}
+.header{padding:12px 14px 6px;text-align:center}
+.app-logo{width:52px;height:52px;border-radius:14px;margin-bottom:8px;box-shadow:0 8px 24px rgba(91,156,246,.35)}
+.header h1{font-size:18px;font-weight:800;background:linear-gradient(90deg,var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.header p{font-size:11px;color:var(--sub);margin-top:2px}
+.cat-selector{display:flex;gap:8px;padding:0 14px 8px;max-width:480px;margin:0 auto}
+.cat-btn{flex:1;padding:10px 6px;border-radius:12px;border:2px solid var(--border);background:var(--card);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cat-btn .cat-icon{font-size:22px;line-height:1}
+.cat-btn .cat-label{font-size:11px}
+.cat-btn.active-light{border-color:var(--cat-light);color:var(--cat-light);background:rgba(245,158,11,.1)}
+.cat-btn.active-build{border-color:var(--cat-build);color:var(--cat-build);background:rgba(59,130,246,.1)}
+.cat-btn:active{opacity:.7}
+#camera-wrap{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:0;transition:all .3s}
+#camera-wrap.hidden{display:none}
+#reader{width:100%;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--border);height:min(90vw,420px);max-height:420px;position:relative}
+#reader video{width:100%!important;height:100%!important;object-fit:cover!important;position:absolute!important;top:0!important;left:0!important}
+#reader>div:first-of-type{width:100%!important;height:100%!important;position:absolute!important;top:0!important;left:0!important}
+#reader .qrbox{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:3px solid var(--green);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);pointer-events:none;z-index:10;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{border-color:var(--green)}50%{border-color:rgba(74,222,128,.4)}}
+#stop-btn{display:none;width:100%;padding:8px;border-radius:0 0 14px 14px;border:1px solid var(--border);border-top:none;background:var(--card);color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#stop-btn.show{display:block}
+#reader__dashboard_section_swaplink,#reader__status_span,#reader__header_message{display:none!important}
+#reader img{display:none}
+#reader select{background:var(--card);color:var(--text);border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;margin:4px auto;display:block}
+#scan-controls{display:none;padding:6px 10px 2px;flex-direction:column;gap:5px}
+#scan-controls.show{display:flex}
+.zoom-bar{display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:7px 12px}
+.zoom-bar .zoom-icon{font-size:13px}
+.zoom-bar input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;background:var(--border);accent-color:var(--blue);outline:none;cursor:pointer}
+.zoom-bar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 0 3px rgba(91,156,246,.25)}
+.zoom-bar .zoom-val{font-size:11px;font-weight:700;color:var(--blue);min-width:30px;text-align:right}
+.cam-row{display:flex;gap:5px}
+#torch-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:8px 10px;border-radius:10px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .2s}
+#torch-btn.on{background:rgba(251,191,36,.15);border-color:#fbbf24;color:#fbbf24}
+.zoom-presets{display:flex;gap:4px}
+.zoom-preset{padding:8px 8px;border-radius:8px;background:var(--card);border:1.5px solid var(--border);color:var(--sub);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;min-width:36px;text-align:center}
+.zoom-preset.active{border-color:var(--blue);color:var(--blue);background:rgba(91,156,246,.1)}
+#zoom-unavail{display:none;text-align:center;font-size:10px;color:var(--sub);padding:3px 0}
+.bottom{padding:8px 14px 20px;display:flex;flex-direction:column;gap:8px;max-width:480px;margin:0 auto}
+#status{text-align:center;font-size:12px;color:var(--sub);min-height:16px;transition:color .2s}
+#status.ok{color:var(--green)}
+#status.err{color:var(--red)}
+#status.loading{color:var(--orange)}
+.btn-start{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;width:100%;padding:13px;font-size:14px;border-radius:12px;border:none;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(91,156,246,.35);-webkit-tap-highlight-color:transparent}
+.btn-start:active{opacity:.7}
+.manual-row{display:flex;gap:6px;max-width:480px;margin:0 auto;padding:0 14px 8px}
+.manual-row input{flex:1;padding:10px 12px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none}
+.manual-row input:focus{border-color:var(--blue)}
+.manual-row input::placeholder{color:var(--sub)}
+.manual-row button{padding:10px 14px;border-radius:10px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.manual-row button:active{opacity:.7}
+#codes-section{max-width:480px;margin:0 auto;padding:0 14px 10px}
+#codes-section.hidden{display:none}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px;flex-wrap:wrap;gap:4px}
+.section-header h2{font-size:14px;font-weight:700}
+.section-header .count-badge{background:var(--blue);color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;min-width:24px;text-align:center}
+.target-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;max-width:480px;margin:0 auto 4px;font-size:13px;color:var(--text)}
+.target-bar input{width:70px;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:14px;text-align:center;outline:none}
+.target-bar input:focus{border-color:var(--blue)}
+.progress-wrap{max-width:480px;margin:0 auto 6px;height:8px;border-radius:8px;background:var(--border);overflow:hidden}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:8px;transition:width .4s ease}
+#codes-list{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto;padding-right:4px}
+#codes-list::-webkit-scrollbar{width:4px}
+#codes-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.code-item{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 10px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.code-item .code-text{font-size:12px;font-weight:600;font-family:monospace;letter-spacing:.5px;flex:1;word-break:break-all;line-height:1.3}
+.code-item .code-cat{font-size:9px;padding:1px 6px;border-radius:10px;font-weight:600;white-space:nowrap}
+.code-item .code-cat.light{background:rgba(245,158,11,.15);color:var(--cat-light)}
+.code-item .code-cat.build{background:rgba(59,130,246,.15);color:var(--cat-build)}
+.code-item .code-del{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px;line-height:1;opacity:.6;transition:opacity .2s}
+.code-item .code-del:hover{opacity:1}
+.action-row{display:flex;gap:6px;flex-wrap:wrap;max-width:480px;margin:0 auto;padding:0 14px 8px}
+.action-btn{flex:1;min-width:calc(50% - 3px);padding:10px 8px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:5px}
+.action-btn:active{opacity:.7}
+.action-btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.action-btn.green{background:var(--green);color:#fff;border-color:var(--green)}
+.action-btn.danger{color:var(--red);border-color:var(--red)}
+.action-btn.purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.action-btn:disabled{opacity:.4;pointer-events:none}
+.options-row{display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto;padding:0 14px 6px;font-size:12px;color:var(--sub);flex-wrap:wrap}
+.options-row label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.options-row input[type=checkbox]{accent-color:var(--blue);width:16px;height:16px;cursor:pointer}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:10px 18px;font-size:13px;font-weight:600;color:var(--text);z-index:999;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:90%;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{border-color:var(--green);color:var(--green)}
+#toast.error{border-color:var(--red);color:var(--red)}
+#toast.target-reached{border-color:var(--orange);color:var(--orange);font-size:18px;padding:16px 24px;background:var(--card);border-width:3px;z-index:1000}
+/* Target reached overlay */
+#target-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px}
+#target-overlay.show{display:flex}
+#target-overlay .big-icon{font-size:64px;animation:bounce 1s ease infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+#target-overlay .big-text{font-size:28px;font-weight:800;color:var(--orange);text-align:center;line-height:1.3}
+#target-overlay .sub-text{font-size:16px;color:var(--sub);text-align:center}
+#target-overlay button{margin-top:8px;padding:14px 32px;border-radius:14px;border:none;background:var(--blue);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-sheet{background:var(--card);border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:70vh;overflow-y:auto;padding:16px 18px 24px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet h3{font-size:15px;font-weight:700;margin-bottom:12px;text-align:center}
+.modal-close{display:block;width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;text-align:center}
+.history-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.history-item:last-child{border-bottom:none}
+.history-item .hi-date{font-size:11px;color:var(--sub)}
+.history-item .hi-count{font-size:12px;font-weight:700}
+.history-item .hi-cat{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:600}
+.history-item .hi-cat.light{background:rgba(245,158,11,.15);color:var(--cat-light)}
+.history-item .hi-cat.build{background:rgba(59,130,246,.15);color:var(--cat-build)}
+.history-item .hi-restore{font-size:11px;color:var(--blue);cursor:pointer;font-weight:600;background:none;border:none;padding:4px 8px}
+.history-item .hi-del{font-size:14px;color:var(--red);cursor:pointer;background:none;border:none;padding:4px 6px;opacity:.6;line-height:1}
+.history-item .hi-del:hover{opacity:1}
+.history-empty{text-align:center;padding:24px;color:var(--sub);font-size:13px}
+.history-search{width:100%;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;outline:none;margin-bottom:8px}
+.history-search:focus{border-color:var(--blue)}
+.history-search::placeholder{color:var(--sub)}
+.install-tip{font-size:13px;color:var(--sub);margin-bottom:10px;text-align:left}
+.install-step{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;color:var(--text);line-height:1.5;text-align:left}
+.install-step b{color:var(--blue)}
+@media(min-width:480px){#reader{height:420px}.bottom,.action-row,.options-row,#codes-section,.top-bar,.cat-selector,.manual-row{padding-left:0;padding-right:0}}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <button class="top-btn" onclick="showHistory()">📋 История</button>
+  <a class="top-btn" href="guide.html">📋 Инструкция</a>
+  <button class="top-btn" id="install-btn" onclick="installApp()">📲 Установить</button>
+  <button class="top-btn" onclick="toggleTheme()" id="theme-btn">
+    <span id="theme-icon">☀️</span>
+    <span id="theme-label">Светлая</span>
+  </button>
+</div>
+
+<div class="header">
+  <img class="app-logo" src="icon-192.png" alt="QR Сканер ЧЗ">
+  <h1>QR Сканер ЧЗ</h1>
+  <p>Сканирование кодов Честного знака</p>
+</div>
+
+<div class="cat-selector">
+  <button class="cat-btn active-light" id="cat-light" onclick="setCategory('light')">
+    <span class="cat-icon">👕</span>
+    <span class="cat-label">Лёгкая промышленность</span>
+  </button>
+  <button class="cat-btn" id="cat-build" onclick="setCategory('build')">
+    <span class="cat-icon">🏗️</span>
+    <span class="cat-label">Строительные материалы</span>
+  </button>
+</div>
+
+<div id="camera-wrap" class="hidden">
+  <div id="reader"></div>
+  <button id="stop-btn" onclick="stopCamera()">✕ Закрыть камеру</button>
+  <div id="scan-controls">
+    <div class="zoom-bar" id="zoom-bar" style="display:none">
+      <span class="zoom-icon">🔍</span>
+      <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" oninput="applyZoom(this.value)">
+      <span class="zoom-val" id="zoom-val">1×</span>
+    </div>
+    <div class="cam-row" id="cam-row" style="display:none">
+      <button id="torch-btn" onclick="toggleTorch()">🔦 Фонарик</button>
+      <div class="zoom-presets" id="zoom-presets" style="display:none">
+        <button class="zoom-preset active" onclick="setZoomPreset(1)">1×</button>
+        <button class="zoom-preset" onclick="setZoomPreset(2)">2×</button>
+        <button class="zoom-preset" onclick="setZoomPreset(3)">3×</button>
+      </div>
+    </div>
+    <div id="zoom-unavail">Зум недоступен на этом устройстве</div>
+  </div>
+</div>
+
+<div class="bottom">
+  <div id="status">Нажмите кнопку для запуска камеры</div>
+  <button class="btn-start" id="start-btn" onclick="startScanner()">📷 Запустить камеру</button>
+</div>
+
+<div class="manual-row" id="manual-row">
+  <input id="manual-input" type="text" inputmode="text" placeholder="Вставьте код ЧЗ (31 символ)" maxlength="31">
+  <button onclick="submitManual()">➕ Добавить</button>
+</div>
+
+<!-- Target count — всегда видно -->
+<div class="target-bar">
+  <span>🎯 Цель: </span>
+  <input type="number" id="targetCount2" min="0" max="9999" placeholder="0" onchange="saveTargetCount()" title="Целевое количество кодов">
+  <span class="count-badge" id="count-badge">0</span>
+</div>
+<div class="progress-wrap" id="progress-wrap" style="display:none">
+  <div class="progress-fill" id="progress-fill"></div>
+</div>
+
+<div id="codes-section" class="hidden">
+  <div class="section-header">
+    <h2>📋 Отсканированные коды</h2>
+    <span class="count-badge" id="count-badge2">0</span>
+  </div>
+  <div id="codes-list"></div>
+</div>
+
+<div class="action-row" id="action-row" style="display:none">
+  <button class="action-btn primary" id="saveBtn" onclick="saveTxt()">💾 .txt</button>
+  <button class="action-btn purple" id="saveCsvBtn" onclick="saveCsv()">📊 .csv</button>
+  <button class="action-btn" id="copyBtn" onclick="copyAll()">📋 Копировать</button>
+  <button class="action-btn green" id="shareBtn" onclick="shareAll()">📤 Поделиться</button>
+  <button class="action-btn danger" id="clearBtn" onclick="clearAll()">🗑 Очистить</button>
+  <button class="action-btn" id="openDownloadsBtn" onclick="openDownloads()">📂 Загрузки</button>
+</div>
+
+<div class="options-row" id="options-row" style="display:none">
+  <label><input type="checkbox" id="autoClearCheck"> 🧹 Очистить после отправки</label>
+  <label><input type="checkbox" id="soundCheck" checked> 🔊 Звук</label>
+  <label><input type="checkbox" id="autoRestartCheck" checked> 🔄 Авто-перезапуск</label>
+</div>
+
+<div id="toast"></div>
+
+<!-- Target reached overlay -->
+<div id="target-overlay">
+  <div class="big-icon">🎯</div>
+  <div class="big-text">Цель достигнута!</div>
+  <div class="sub-text" id="target-msg">Отсканировано 0 кодов</div>
+  <button onclick="closeTargetOverlay()">✅ Продолжить</button>
+</div>
+
+<div class="modal-overlay" id="history-modal">
+  <div class="modal-sheet">
+    <h3>📋 История сканирований</h3>
+    <input class="history-search" id="history-search" type="text" placeholder="🔍 Поиск по дате или категории..." oninput="filterHistory()">
+    <div id="history-list"></div>
+    <button class="modal-close" onclick="closeHistory()">Закрыть</button>
+  </div>
+</div>
+
+<!-- Install modal -->
+<div class="modal-overlay" id="install-modal">
+  <div class="modal-sheet">
+    <h3>📲 Установить приложение</h3>
+    <p class="install-tip">Добавьте ярлык приложения на главный экран — работает на любой модели телефона:</p>
+    <div class="install-step"><b>Android (Chrome):</b> меню ⋮ → «Добавить на главный экран» или «Установить приложение»</div>
+    <div class="install-step"><b>iPhone (Safari):</b> кнопка «Поделиться» (квадрат со стрелкой) → «На экран «Домой»»</div>
+    <div class="install-step"><b>Другие браузеры:</b> меню браузера → «Добавить на главный экран»</div>
+    <button class="modal-close" onclick="closeInstallModal()">Понятно</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Scan_Save_Send_qr v2.1 — PWA сканер QR/DataMatrix ЧЗ
+// ═══════════════════════════════════════════════════════════════
+
+let scanner = null, scanActive = false, currentCategory = 'light', torchOn = false, zoomSupported = false, currentZoom = 1, restartTimer = null;
+let codes = [];
+let sessionId = Date.now();
+let targetReachedShown = false;
+
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('start-btn');
+const codesList = document.getElementById('codes-list');
+const countBadge = document.getElementById('count-badge');
+const countBadge2 = document.getElementById('count-badge2');
+const codesSection = document.getElementById('codes-section');
+const actionRow = document.getElementById('action-row');
+const optionsRow = document.getElementById('options-row');
+
+function esc(str) {
+  if (!str && str !== 0) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+// ── Theme ──
+function toggleTheme() {
+  var isLight = document.documentElement.dataset.theme === 'light';
+  var t = isLight ? 'dark' : 'light';
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('ssq-theme', t);
+  document.getElementById('theme-icon').textContent = t === 'light' ? '🌙' : '☀️';
+  document.getElementById('theme-label').textContent = t === 'light' ? 'Тёмная' : 'Светлая';
+}
+(function() {
+  var s = localStorage.getItem('ssq-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.dataset.theme = s;
+  document.getElementById('theme-icon').textContent = s === 'light' ? '🌙' : '☀️';
+  document.getElementById('theme-label').textContent = s === 'light' ? 'Тёмная' : 'Светлая';
+})();
+
+// ── Category ──
+function setCategory(cat) {
+  currentCategory = cat;
+  document.getElementById('cat-light').className = 'cat-btn' + (cat === 'light' ? ' active-light' : '');
+  document.getElementById('cat-build').className = 'cat-btn' + (cat === 'build' ? ' active-build' : '');
+  localStorage.setItem('ssq-category', cat);
+}
+(function() {
+  var s = localStorage.getItem('ssq-category');
+  if (s) setCategory(s);
+})();
+
+// ── Toast ──
+var toastTimer = null;
+function showToast(msg, type) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.className = ''; }, 2200);
+}
+
+// ── Sound ──
+var audioCtx = null;
+function playBeep() {
+  if (!document.getElementById('soundCheck').checked) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 1200;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.15);
+  } catch(e) {}
+}
+
+// ── Siren sound for target reached ──
+function playSiren() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Siren: alternating high-low tones
+    var now = audioCtx.currentTime;
+    for (var i = 0; i < 6; i++) {
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.value = i % 2 === 0 ? 880 : 660;
+      gain.gain.setValueAtTime(0.2, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.12);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.12);
+    }
+    // Long vibration pattern
+    try { navigator.vibrate([200, 100, 200, 100, 400]); } catch(_) {}
+  } catch(e) {}
+}
+
+// ── Target reached overlay ──
+function showTargetReached(count) {
+  if (targetReachedShown) return;
+  targetReachedShown = true;
+  document.getElementById('target-msg').textContent = 'Отсканировано ' + count + ' кодов';
+  document.getElementById('target-overlay').classList.add('show');
+  playSiren();
+}
+
+function closeTargetOverlay() {
+  document.getElementById('target-overlay').classList.remove('show');
+}
+
+// ── LocalStorage ──
+function saveToLocalStorage() {
+  try { localStorage.setItem('ssq-codes', JSON.stringify(codes)); } catch(e) {}
+}
+function loadFromLocalStorage() {
+  try {
+    var s = localStorage.getItem('ssq-codes');
+    if (s) { codes = JSON.parse(s); if (!Array.isArray(codes)) codes = []; }
+  } catch(e) { codes = []; }
+}
+
+// ── Target count ──
+function saveTargetCount() {
+  var el = document.getElementById('targetCount2');
+  var val = parseInt(el ? el.value : 0) || 0;
+  localStorage.setItem('ssq-target', val);
+  targetReachedShown = false;
+}
+function loadTargetCount() {
+  var el = document.getElementById('targetCount2');
+  if (!el) return;
+  var val = parseInt(localStorage.getItem('ssq-target')) || 0;
+  el.value = val || '';
+}
+function checkTargetReached() {
+  var el = document.getElementById('targetCount2');
+  var target = parseInt(el ? el.value : 0) || 0;
+  if (target > 0 && codes.length >= target) {
+    showTargetReached(codes.length);
+    return true;
+  }
+  return false;
+}
+
+// ── History ──
+// Одна запись на сессию: upsert по sessionId (не плодим дубли на каждый скан)
+function saveSessionToHistory() {
+  if (codes.length === 0) return;
+  try {
+    var h = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    var entry = { id: sessionId, date: new Date().toISOString(), category: currentCategory, count: codes.length, codes: codes.slice() };
+    var idx = -1;
+    for (var i = 0; i < h.length; i++) {
+      if (h[i].id === sessionId) { idx = i; break; }
+    }
+    if (idx >= 0) h[idx] = entry; else h.push(entry);
+    if (h.length > 50) h.splice(0, h.length - 50);
+    localStorage.setItem('ssq-history', JSON.stringify(h));
+  } catch(e) {}
+}
+
+function showHistory() {
+  document.getElementById('history-modal').classList.add('show');
+  renderHistory(document.getElementById('history-list'));
+}
+
+function renderHistory(list, filterText) {
+  try {
+    var history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    var filtered = history.slice().reverse();
+    if (filterText) {
+      var q = filterText.toLowerCase();
+      filtered = filtered.filter(function(h) {
+        var d = new Date(h.date);
+        var ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+        var cl = h.category === 'light' ? 'лёгкая пром.' : 'строит. мат.';
+        return ds.toLowerCase().includes(q) || cl.includes(q) || String(h.count).includes(q);
+      });
+    }
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="history-empty">' + (filterText ? 'Ничего не найдено' : 'История пуста') + '</div>';
+    } else {
+      list.innerHTML = filtered.map(function(h) {
+        var idx = history.length - 1 - history.indexOf(h);
+        var d = new Date(h.date);
+        var ds = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+        var cl = h.category === 'light' ? '👕 Лёгкая пром.' : '🏗️ Строит. мат.';
+        var cc = h.category === 'light' ? 'light' : 'build';
+        return '<div class="history-item"><div><div class="hi-date">' + esc(ds) + '</div><div><span class="hi-cat ' + cc + '">' + cl + '</span></div></div><div style="display:flex;align-items:center;gap:6px"><span class="hi-count">' + h.count + ' шт</span><button class="hi-restore" onclick="restoreHistory(' + idx + ')">↩</button><button class="hi-del" onclick="deleteHistory(' + idx + ')" title="Удалить">✕</button></div></div>';
+      }).join('');
+    }
+  } catch(e) { list.innerHTML = '<div class="history-empty">Ошибка загрузки истории</div>'; }
+}
+
+function filterHistory() {
+  renderHistory(document.getElementById('history-list'), document.getElementById('history-search').value);
+}
+
+function closeHistory() { document.getElementById('history-modal').classList.remove('show'); }
+
+function deleteHistory(idx) {
+  try {
+    var history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    if (idx < 0 || idx >= history.length) return;
+    history.splice(idx, 1);
+    localStorage.setItem('ssq-history', JSON.stringify(history));
+    showToast('Запись удалена', 'success');
+    renderHistory(document.getElementById('history-list'), document.getElementById('history-search').value);
+  } catch(e) {}
+}
+
+function restoreHistory(idx) {
+  try {
+    var history = JSON.parse(localStorage.getItem('ssq-history') || '[]');
+    var session = history[idx];
+    if (!session) return;
+    codes = session.codes.slice();
+    currentCategory = session.category;
+    setCategory(currentCategory);
+    saveToLocalStorage();
+    renderCodes();
+    closeHistory();
+    showToast('Сессия восстановлена: ' + codes.length + ' кодов', 'success');
+  } catch(e) {}
+}
+
+// ── Save history: по простою 3 c после последнего скана + при уходе со страницы ──
+var historyTimer = null;
+function scheduleHistorySave() {
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(saveSessionToHistory, 3000);
+}
+window.addEventListener('pagehide', function() {
+  clearTimeout(historyTimer);
+  saveSessionToHistory();
+});
+
+// ── Render codes ──
+function renderCodes() {
+  var has = codes.length > 0;
+  codesSection.classList.toggle('hidden', !has);
+  actionRow.style.display = has ? 'flex' : 'none';
+  optionsRow.style.display = has ? 'flex' : 'none';
+  countBadge.textContent = codes.length;
+  if (countBadge2) countBadge2.textContent = codes.length;
+  codesList.innerHTML = codes.map(function(c, i) {
+    var cc = c.cat === 'light' ? 'light' : 'build';
+    var cl = c.cat === 'light' ? '👕' : '🏗️';
+    return '<div class="code-item"><span class="code-text">' + esc(c.text) + '</span><span class="code-cat ' + cc + '">' + cl + '</span><button class="code-del" onclick="removeCode(' + i + ')">✕</button></div>';
+  }).join('');
+  updateTargetProgress();
+}
+
+function updateTargetProgress() {
+  var el = document.getElementById('targetCount2');
+  var target = parseInt(el ? el.value : 0) || 0;
+  var wrap = document.getElementById('progress-wrap');
+  var fill = document.getElementById('progress-fill');
+  if (target > 0) {
+    if (wrap) wrap.style.display = 'block';
+    if (fill) fill.style.width = Math.min(100, Math.round(codes.length / target * 100)) + '%';
+    var remaining = target - codes.length;
+    if (remaining <= 0) {
+      countBadge.textContent = codes.length + ' / ' + target;
+      countBadge.style.background = 'var(--orange)';
+    } else {
+      countBadge.textContent = codes.length + ' / ' + target;
+      countBadge.style.background = 'var(--blue)';
+    }
+  } else {
+    if (wrap) wrap.style.display = 'none';
+    countBadge.textContent = codes.length;
+    countBadge.style.background = 'var(--blue)';
+  }
+}
+
+// ── Add code ──
+function addCode(text, cat) {
+  if (!text || text.length === 0) return false;
+  // Берём 31 символ, очищая от escape-символов (\u001C, \u001D и т.д.)
+  var raw = text.toString();
+  var clean = raw.replace(/[\u0000-\u001F]/g, '');
+  var short = clean.substring(0, 31);
+  if (short.length < 1) return false;
+  // Duplicate check
+  for (var i = 0; i < codes.length; i++) {
+    if (codes[i].text === short) {
+      showToast('Повтор! Код уже в списке', 'error');
+      try { navigator.vibrate(200); } catch(_) {}
+      return false;
+    }
+  }
+  codes.push({ text: short, cat: cat || currentCategory });
+  saveToLocalStorage();
+  scheduleHistorySave();
+  renderCodes();
+  // Vibrate
+  try { navigator.vibrate(100); } catch(_) {}
+  playBeep();
+  // Check target immediately
+  checkTargetReached();
+  showToast('✅ ' + short.length + ' символов (' + codes.length + ')', 'success');
+  return true;
+}
+
+function removeCode(idx) {
+  codes.splice(idx, 1);
+  saveToLocalStorage();
+  renderCodes();
+}
+
+function clearAll() {
+  if (codes.length === 0) return;
+  if (!confirm('Очистить все коды (' + codes.length + ' шт)?')) return;
+  // Save to history before clearing
+  saveSessionToHistory();
+  codes = [];
+  sessionId = Date.now();
+  targetReachedShown = false;
+  saveToLocalStorage();
+  renderCodes();
+  showToast('Список очищен', 'success');
+}
+
+// ── Sort codes by first 16 chars ──
+function sortCodes() {
+  codes.sort(function(a, b) {
+    var a16 = a.text.substring(0, 16);
+    var b16 = b.text.substring(0, 16);
+    if (a16 < b16) return -1;
+    if (a16 > b16) return 1;
+    return 0;
+  });
+}
+
+// ── Get filename from first code ──
+function getFilename(ext) {
+  if (codes.length > 0) {
+    var name = codes[0].text.substring(0, 16).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (name.length > 0) return name + '.' + ext;
+  }
+  return 'codes.' + ext;
+}
+
+// ── Build file content (TXT): BOM + CRLF для корректного отображения в Windows ──
+function buildFileContent() {
+  sortCodes();
+  var now = new Date();
+  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+  var header = 'QR коды Честного знака\r\nКатегория: ' + catName + '\r\nДата: ' + ds + '\r\nВсего: ' + codes.length + '\r\n\r\n';
+  var body = codes.map(function(c) { return c.text; }).join('\r\n');
+  return '\uFEFF' + header + body;
+}
+
+// ── Build CSV: BOM (UTF-8), разделитель ";", CRLF, экранирование кавычек ──
+function buildCsvContent() {
+  sortCodes();
+  var now = new Date();
+  var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+  var rows = [
+    ['Категория', catName],
+    ['Дата', ds],
+    ['Всего кодов', codes.length],
+    [],
+    ['№', 'Код']
+  ];
+  codes.forEach(function(c, i) { rows.push([i + 1, c.text]); });
+  var csv = rows.map(function(r) {
+    return r.map(function(cell) {
+      var s = String(cell == null ? '' : cell);
+      if (/[";\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }).join(';');
+  }).join('\r\n') + '\r\n';
+  return '\uFEFF' + csv;
+}
+
+// ── Save TXT (скачать + открыть Share на телефоне) ──
+function saveTxt() {
+  if (codes.length === 0) { showToast('Нет кодов для сохранения', 'error'); return; }
+  var content = buildFileContent();
+  var filename = getFilename('txt');
+  // Пробуем Share с файлом (на телефонах)
+  if (navigator.share && navigator.canShare) {
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    var file = new File([blob], filename, { type: 'text/plain' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'QR коды ЧЗ' }).catch(function() {});
+      if (document.getElementById('autoClearCheck').checked) clearAll();
+      return;
+    }
+  }
+  // Если Share не поддерживается — обычное скачивание
+  downloadFile(content, filename, 'text/plain;charset=utf-8');
+}
+
+// ── Save CSV (скачать + открыть Share на телефоне) ──
+function saveCsv() {
+  if (codes.length === 0) { showToast('Нет кодов для сохранения', 'error'); return; }
+  var content = buildCsvContent();
+  var filename = getFilename('csv');
+  // Пробуем Share с файлом (на телефонах)
+  if (navigator.share && navigator.canShare) {
+    var blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+    var file = new File([blob], filename, { type: 'text/csv' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: 'QR коды ЧЗ' }).catch(function() {});
+      if (document.getElementById('autoClearCheck').checked) clearAll();
+      return;
+    }
+  }
+  // Если Share не поддерживается — обычное скачивание
+  downloadFile(content, filename, 'text/csv;charset=utf-8');
+}
+
+// ── Download helper (только скачивание, fallback) ──
+function downloadFile(content, filename, mime) {
+  var blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+  showToast('Файл ' + filename + ' сохранён', 'success');
+}
+
+// ── Open / Share last saved file ──
+function openDownloads() {
+  // Если есть сохранённые файлы — пытаемся поделиться последним
+  if (codes.length === 0) { showToast('Сначала сохраните файл', 'error'); return; }
+  
+  if (navigator.share) {
+    // Создаём файл на лету и открываем окно «Поделиться»
+    var now = new Date();
+    var catName = currentCategory === 'light' ? 'Лёгкая промышленность' : 'Строительные материалы';
+    var ds = now.toLocaleDateString('ru-RU') + ', ' + now.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    var header = 'QR коды Честного знака\nКатегория: ' + catName + '\nДата: ' + ds + '\nВсего: ' + codes.length + '\n\n';
+    var body = codes.map(function(c) { return c.text; }).join('\n');
+    var content = header + body;
+    var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    var file = new File([blob], getFilename('txt'), { type: 'text/plain' });
+    
+    navigator.share({
+      title: 'QR коды ЧЗ',
+      text: body,
+      files: [file]
+    }).catch(function() {});
+  } else {
+    showToast('Файл сохранён. Откройте приложение «Файлы» → папка Загрузки', '');
+  }
+}
+
+// ── Copy all ──
+function copyAll() {
+  if (codes.length === 0) { showToast('Нет кодов для копирования', 'error'); return; }
+  sortCodes();
+  var text = codes.map(function(c) { return c.text; }).join('\n');
+  navigator.clipboard.writeText(text).then(function() {
+    showToast('Скопировано ' + codes.length + ' кодов', 'success');
+    if (document.getElementById('autoClearCheck').checked) clearAll();
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Скопировано ' + codes.length + ' кодов', 'success');
+    if (document.getElementById('autoClearCheck').checked) clearAll();
+  });
+}
+
+// ── Share all ──
+function shareAll() {
+  if (codes.length === 0) { showToast('Нет кодов для отправки', 'error'); return; }
+  sortCodes();
+  var text = codes.map(function(c) { return c.text; }).join('\n');
+  if (navigator.share) {
+    navigator.share({ title: 'QR коды ЧЗ', text: text }).then(function() {
+      if (document.getElementById('autoClearCheck').checked) clearAll();
+    }).catch(function() {});
+  } else {
+    copyAll();
+  }
+}
+
+// ── Manual input ──
+function submitManual() {
+  var input = document.getElementById('manual-input');
+  var val = input.value.trim();
+  if (!val) { showToast('Введите код', 'error'); return; }
+  if (addCode(val, currentCategory)) {
+    input.value = '';
+  }
+}
+
+// ── Scanner ──
+function startScanner() {
+  if (scanActive) {
+    showToast('Камера уже запущена', 'error');
+    return;
+  }
+  var wrap = document.getElementById('camera-wrap');
+  wrap.classList.remove('hidden');
+  document.getElementById('stop-btn').classList.add('show');
+  document.getElementById('scan-controls').classList.add('show');
+  startBtn.style.display = 'none';
+  statusEl.textContent = 'Запуск камеры...';
+  statusEl.className = 'loading';
+
+  // Если старый scanner есть — остановить
+  if (scanner) {
+    try { scanner.stop(); } catch(e) {}
+    scanner = null;
+  }
+
+  scanner = new Html5Qrcode('reader');
+
+  var config = {
+    fps: 10,
+    qrbox: function(viewfinderWidth, viewfinderHeight) {
+      var size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
+      return { width: size, height: size };
+    },
+    aspectRatio: 1.7777778
+  };
+
+  scanner.start(
+    { facingMode: 'environment' },
+    config,
+    onScanSuccess,
+    onScanFailure
+  ).then(function() {
+    scanActive = true;
+    statusEl.textContent = '✅ Камера работает. Наведите на QR-код.';
+    statusEl.className = 'ok';
+    // Check zoom via track
+    setTimeout(function() {
+      probeCapabilities();
+    }, 500);
+  }).catch(function(err) {
+    statusEl.textContent = 'Ошибка: ' + (err.message || err);
+    statusEl.className = 'err';
+    wrap.classList.add('hidden');
+    document.getElementById('stop-btn').classList.remove('show');
+    document.getElementById('scan-controls').classList.remove('show');
+    startBtn.style.display = 'block';
+    scanner = null;
+  });
+}
+
+function probeCapabilities() {
+  var track = getVideoTrack();
+  document.getElementById('scan-controls').classList.add('show');
+  document.getElementById('cam-row').style.display = 'flex';
+  if (!track) {
+    document.getElementById('zoom-unavail').style.display = 'block';
+    return;
+  }
+  try {
+    var caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.zoom) {
+      zoomSupported = true;
+      var slider = document.getElementById('zoom-slider');
+      slider.min = caps.zoom.min || 1;
+      slider.max = Math.min(caps.zoom.max || 5, 8);
+      slider.step = caps.zoom.step || 0.1;
+      slider.value = currentZoom;
+      document.getElementById('zoom-bar').style.display = 'flex';
+      var presets = document.querySelectorAll('.zoom-preset');
+      var anyVisible = false;
+      presets.forEach(function(btn) {
+        var v = parseFloat(btn.textContent);
+        if (v <= (caps.zoom.max || 5)) { btn.style.display = ''; anyVisible = true; }
+        else btn.style.display = 'none';
+      });
+      if (anyVisible) document.getElementById('zoom-presets').style.display = 'flex';
+    } else {
+      document.getElementById('zoom-unavail').style.display = 'block';
+    }
+    if (!caps.torch) {
+      document.getElementById('torch-btn').style.display = 'none';
+    }
+  } catch(e) {
+    document.getElementById('zoom-unavail').style.display = 'block';
+  }
+}
+
+function onScanSuccess(decodedText) {
+  if (!scanActive) return;
+  // Pause scanning
+  scanActive = false;
+  try { scanner.pause(); } catch(e) {}
+  statusEl.textContent = '✅ Код распознан!';
+  statusEl.className = 'ok';
+  addCode(decodedText, currentCategory);
+  // Auto restart
+  if (document.getElementById('autoRestartCheck').checked) {
+    restartTimer = setTimeout(function() {
+      if (scanner && scanActive === false) {
+        try {
+          scanner.resume();
+          scanActive = true;
+          statusEl.textContent = '✅ Камера работает. Наведите на QR-код.';
+          statusEl.className = 'ok';
+        } catch(e) {}
+      }
+    }, 1500);
+  }
+}
+
+function onScanFailure(err) {
+  // Silent - most errors are just 'no code found'
+}
+
+function stopCamera() {
+  clearTimeout(restartTimer);
+  if (scanner) {
+    try { scanner.stop(); } catch(e) {}
+  }
+  scanner = null;
+  scanActive = false;
+  document.getElementById('camera-wrap').classList.add('hidden');
+  document.getElementById('stop-btn').classList.remove('show');
+  document.getElementById('scan-controls').classList.remove('show');
+  startBtn.style.display = 'block';
+  statusEl.textContent = 'Камера остановлена';
+  statusEl.className = '';
+}
+
+function getVideoTrack() {
+  try {
+    var video = document.querySelector('#reader video');
+    if (!video || !video.srcObject) return null;
+    var tracks = video.srcObject.getVideoTracks();
+    return tracks.length ? tracks[0] : null;
+  } catch(_) { return null; }
+}
+
+// ── Torch ──
+function toggleTorch() {
+  var track = getVideoTrack();
+  if (!track) return;
+  torchOn = !torchOn;
+  track.applyConstraints({ advanced: [{ torch: torchOn }] }).then(function() {
+    document.getElementById('torch-btn').classList.toggle('on', torchOn);
+    document.getElementById('torch-btn').textContent = torchOn ? '🔦 Фонарик ON' : '🔦 Фонарик';
+  }).catch(function() {
+    torchOn = false;
+  });
+}
+
+// ── Zoom ──
+function applyZoom(val) {
+  currentZoom = parseFloat(val);
+  document.getElementById('zoom-val').textContent = currentZoom.toFixed(1) + '×';
+  var track = getVideoTrack();
+  if (!track) return;
+  try {
+    var caps = track.getCapabilities();
+    if (caps.zoom) {
+      var zVal = Math.min(Math.max(val, caps.zoom.min || 1), caps.zoom.max || 8);
+      track.applyConstraints({ advanced: [{ zoom: zVal }] }).catch(function(){});
+    }
+  } catch(_) {}
+}
+
+function setZoomPreset(val) {
+  document.getElementById('zoom-slider').value = val;
+  applyZoom(val);
+  document.querySelectorAll('.zoom-preset').forEach(function(el) {
+    el.classList.toggle('active', parseFloat(el.textContent) === val);
+  });
+}
+
+// ── Install (PWA): работает на любой модели — prompt где можно, инструкция где нельзя ──
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+window.addEventListener('appinstalled', function() {
+  showToast('Приложение установлено 🎉', 'success');
+});
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(choice) {
+      if (choice.outcome === 'accepted') showToast('Установка началась', 'success');
+      deferredPrompt = null;
+    });
+  } else {
+    document.getElementById('install-modal').classList.add('show');
+  }
+}
+function closeInstallModal() {
+  document.getElementById('install-modal').classList.remove('show');
+}
+// Если приложение уже установлено/открыто как PWA — кнопка не нужна
+if (matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+  document.getElementById('install-btn').style.display = 'none';
+}
+
+// ── Init ──
+loadFromLocalStorage();
+loadTargetCount();
+renderCodes();
+
+// Register Service Worker + auto-update on new version
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js', { scope: '/Scan_Save_Send_qr/', updateViaCache: 'none' }).then(function(reg) {
+    // Новая версия SW найдена — обновляем сразу
+    reg.addEventListener('updatefound', function() {
+      var newWorker = reg.installing;
+      newWorker.addEventListener('statechange', function() {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Новая версия загружена — перезагружаем страницу
+          if (confirm('Доступна новая версия приложения. Обновить?')) {
+            window.location.reload();
+          }
+        }
+      });
+    });
+    // Проверка обновлений каждые 5 минут
+    setInterval(function() { reg.update(); }, 5 * 60 * 1000);
+  }).catch(function(err) {
+    console.log('SW registration failed:', err);
+  });
+}
+
+// Keyboard support for manual input
+document.getElementById('manual-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') submitManual();
+});
+</script>
+</body>
+</html>
